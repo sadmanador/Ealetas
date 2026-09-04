@@ -1,4 +1,4 @@
-# Eletas - Fine Jewelry React Starter
+# Ealetas - Fine Jewelry React Starter
 
 A minimalist, high-end fine jewelry React template built with [Vite](https://vitejs.dev/) and tailored for seamless deployment to [Vercel](https://vercel.com).
 
@@ -31,7 +31,7 @@ npm run build
    git push -u origin main
    ```
 2. Go to [vercel.com/new](https://vercel.com/new).
-3. Import your repository (`sadmanador/Eletas`).
+3. Import your repository (`sadmanador/Ealetas`).
 4. Keep the default settings (Framework Preset: **Vite**).
 5. Click **Deploy**.
 

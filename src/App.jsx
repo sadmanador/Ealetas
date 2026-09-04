@@ -83,7 +83,7 @@ export default function App() {
           </nav>
 
           <a href="#" className="brand-logo">
-            ELETAS
+            EALETAS
             <span className="brand-sub">FINE JEWELRY</span>
           </a>
 
@@ -216,7 +216,7 @@ export default function App() {
               <p className="section-eyebrow">OUR PHILOSOPHY</p>
               <h2 className="section-title">Jewelry with a Soul</h2>
               <p>
-                At Eletas, we believe true luxury honors both beauty and provenance. Every silhouette
+                At Ealetas, we believe true luxury honors both beauty and provenance. Every silhouette
                 is conceived in our private studio, blending architectural proportions with organic
                 contours.
               </p>
@@ -242,13 +242,13 @@ export default function App() {
         {/* Newsletter / Contact */}
         <section className="newsletter-section">
           <div className="container newsletter-content">
-            <h2 className="section-title">Join the Eletas Atelier</h2>
+            <h2 className="section-title">Join the Ealetas Atelier</h2>
             <p>
               Receive private invitations to preview new capsule collections and bespoke design services.
             </p>
             {subscribed ? (
               <div className="subscribed-msg">
-                <span>✦ Thank you for joining our private circle. Welcome to Eletas.</span>
+                <span>✦ Thank you for joining our private circle. Welcome to Ealetas.</span>
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="newsletter-form">
@@ -273,7 +273,7 @@ export default function App() {
       <footer className="site-footer">
         <div className="container footer-grid">
           <div>
-            <h3 className="footer-brand">ELETAS</h3>
+            <h3 className="footer-brand">EALETAS</h3>
             <p className="footer-bio">
               Fine modern jewelry made for the moments that define you.
             </p>
@@ -298,7 +298,7 @@ export default function App() {
           </div>
         </div>
         <div className="footer-bottom">
-          <p>© {new Date().getFullYear()} Eletas Fine Jewelry. Ready for Vercel deployment.</p>
+          <p>© {new Date().getFullYear()} Ealetas Fine Jewelry. Ready for Vercel deployment.</p>
         </div>
       </footer>
     </div>
