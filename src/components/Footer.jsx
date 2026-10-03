@@ -45,19 +45,16 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Admin / Portal */}
+          {/* Consultations */}
           <div>
             <h4 className="text-xs uppercase tracking-widest text-white font-medium mb-4">
-              Atelier Management
+              Private Concierge
             </h4>
             <ul className="space-y-2.5 text-xs text-[#9c978f]">
-              <li>
-                <Link href="/admin/login" className="text-[#b88b42] hover:underline">
-                  Admin Sign In
-                </Link>
-              </li>
-              <li><span className="text-[#7d7870]">Seeded Admin Portals (2 Accounts)</span></li>
-              <li><span className="text-[#7d7870]">Instant SMS Alert Gateway</span></li>
+              <li><span className="text-[#9c978f]">Bespoke Ring Designing</span></li>
+              <li><span className="text-[#9c978f]">Diamond Consultation</span></li>
+              <li><span className="text-[#9c978f]">Private Atelier Viewing</span></li>
+              <li><span className="text-[#9c978f]">Certificate of Authenticity</span></li>
             </ul>
           </div>
         </div>

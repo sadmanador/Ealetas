@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
-import { ShoppingBag, ShieldCheck, Sparkles } from 'lucide-react';
+import { ShoppingBag, Sparkles } from 'lucide-react';
 
 export default function Navbar() {
   const { totalItemsCount, setIsCartOpen } = useCart();
@@ -59,14 +59,6 @@ export default function Navbar() {
 
           {/* Right Actions */}
           <div className="flex items-center space-x-5">
-            <Link
-              href="/admin/login"
-              className="hidden sm:flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[#6b665f] hover:text-[#b88b42] transition-colors"
-            >
-              <ShieldCheck className="w-4 h-4 text-[#b88b42]" />
-              Admin Portal
-            </Link>
-
             {/* Shopping Bag Button */}
             <button
               type="button"
