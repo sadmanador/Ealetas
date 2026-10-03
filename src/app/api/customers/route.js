@@ -30,7 +30,7 @@ export async function GET() {
 
     const formatted = customers.map((c) => {
       const totalSpent = c.orders
-        .filter((o) => o.status !== 'cancelled' && o.status !== 'returned')
+        .filter((o) => o.status === 'delivered')
         .reduce((sum, o) => sum + o.totalAmount, 0);
 
       return {

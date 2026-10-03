@@ -133,7 +133,7 @@ export default function AdminDashboardPage() {
                 ৳{data.totalIncome?.toLocaleString() || 0}
               </div>
               <div className="text-[11px] text-[#6b665f]">
-                Filtered by: <span className="font-semibold capitalize">{data.filter}</span> (excluding cancelled/returned)
+                Filtered by: <span className="font-semibold capitalize">{data.filter}</span> (delivered orders only)
               </div>
             </div>
 

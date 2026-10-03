@@ -46,11 +46,9 @@ export async function GET(request) {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Income (revenue excluding cancelled & returned)
-    const validOrders = orders.filter(
-      (o) => o.status !== 'cancelled' && o.status !== 'returned'
-    );
-    const totalIncome = validOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+    // Income / Revenue: Only after successful "delivered" status
+    const deliveredOrders = orders.filter((o) => o.status === 'delivered');
+    const totalIncome = deliveredOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
     // Status counts
     const statusCounts = {
