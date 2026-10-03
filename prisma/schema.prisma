@@ -1,0 +1,109 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String
+  role      String   @default("ADMIN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  name          String
+  slug          String      @unique
+  description   String      @db.Text
+  price         Float
+  wholesaleCost Float       @default(0)
+  category      String
+  tags          String      @default("")
+  quantity      Int         @default(0)
+  images        String      @db.Text
+  isFeatured    Boolean     @default(false)
+  orderItems    OrderItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  phone       String   @unique
+  name        String
+  division    String
+  district    String
+  upazila     String
+  fullAddress String   @db.Text
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique
+  customerId        String
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  status            String      @default("pending") // pending, confirmed, in_transit, delivered, cancelled, returned
+  subtotal          Float
+  deliveryCharge    Float
+  totalAmount       Float
+  isDhakaCityCorp   Boolean     @default(false)
+  deliveryAddress   String      @db.Text
+  customerPhone     String
+  customerName      String
+  notes             String?
+  inventoryAdjusted Boolean     @default(false)
+  items             OrderItem[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model OrderItem {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName   String
+  productImage  String?
+  price         Float
+  wholesaleCost Float    @default(0)
+  quantity      Int      @default(1)
+}
+
+model ProcurementLog {
+  id                   String   @id @default(cuid())
+  date                 DateTime @default(now())
+  transportCost        Float    @default(0)
+  foodCost             Float    @default(0)
+  wholesaleProductCost Float    @default(0)
+  otherCost            Float    @default(0)
+  totalCost            Float    @default(0)
+  notes                String?  @db.Text
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  path      String
+  productId String?
+  createdAt DateTime @default(now())
+}
+
+model StoreSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
