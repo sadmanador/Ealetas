@@ -162,6 +162,61 @@ async function main() {
   }
 
   console.log(`✅ Seeded ${initialProducts.length} jewelry products`);
+
+  // 4. Seed Initial Packaging Items (Boxes, Pouches, Ribbons)
+  const packagingData = [
+    {
+      sku: 'BOX-12104',
+      name: 'Rigid Presentation Shipping Box',
+      dimensions: '12"x10"x4"',
+      description: 'Heavyweight matte textured exterior with protective custom foam insert.',
+      unitPrice: 45,
+      quantity: 150,
+    },
+    {
+      sku: 'RING-VEL-01',
+      name: 'Velvet Solitaire Ring Box',
+      dimensions: '2.5"x2.5"x2"',
+      description: 'Plush midnight black velvet with gold embossed inner hinge.',
+      unitPrice: 85,
+      quantity: 200,
+    },
+    {
+      sku: 'POUCH-SAT-02',
+      name: 'Satin Jewelry Pouch',
+      dimensions: '4"x5"',
+      description: 'Gold drawstring satin gift pouch for chains and bracelets.',
+      unitPrice: 25,
+      quantity: 300,
+    },
+  ];
+
+  for (const pack of packagingData) {
+    const item = await prisma.packagingItem.upsert({
+      where: { sku: pack.sku },
+      update: {},
+      create: pack,
+    });
+
+    // Create initial shipment record if not exists
+    const batchCount = await prisma.packagingBatch.count({
+      where: { packagingItemId: item.id },
+    });
+    if (batchCount === 0) {
+      await prisma.packagingBatch.create({
+        data: {
+          packagingItemId: item.id,
+          quantity: pack.quantity,
+          unitPrice: pack.unitPrice,
+          totalCost: pack.quantity * pack.unitPrice,
+          supplier: 'Dhaka Packaging Guild',
+          notes: 'Initial opening stock batch',
+        },
+      });
+    }
+  }
+
+  console.log('✅ Seeded initial Packaging Items (including 12"x10"x4" Box)');
   console.log('✨ Seeding completed successfully!');
 }
 

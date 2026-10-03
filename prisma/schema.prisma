@@ -53,7 +53,7 @@ model Order {
   orderNumber       String      @unique
   customerId        String
   customer          Customer    @relation(fields: [customerId], references: [id])
-  status            String      @default("pending") // pending, confirmed, in_transit, delivered, cancelled, returned
+  status            String      @default("pending") // pending, confirmed, packaged, in_transit, delivered, cancelled, returned
   subtotal          Float
   deliveryCharge    Float
   totalAmount       Float
@@ -79,6 +79,32 @@ model OrderItem {
   price         Float
   wholesaleCost Float    @default(0)
   quantity      Int      @default(1)
+}
+
+model PackagingItem {
+  id          String           @id @default(cuid())
+  sku         String           @unique
+  name        String
+  dimensions  String?
+  description String?          @db.Text
+  unitPrice   Float            @default(0)
+  quantity    Int              @default(0)
+  batches     PackagingBatch[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model PackagingBatch {
+  id              String        @id @default(cuid())
+  packagingItemId String
+  packagingItem   PackagingItem @relation(fields: [packagingItemId], references: [id], onDelete: Cascade)
+  quantity        Int
+  unitPrice       Float
+  totalCost       Float
+  supplier        String?
+  notes           String?       @db.Text
+  receivedDate    DateTime      @default(now())
+  createdAt       DateTime      @default(now())
 }
 
 model ProcurementLog {

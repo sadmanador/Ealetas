@@ -54,6 +54,7 @@ export async function GET(request) {
     const statusCounts = {
       pending: orders.filter((o) => o.status === 'pending').length,
       confirmed: orders.filter((o) => o.status === 'confirmed').length,
+      packaged: orders.filter((o) => o.status === 'packaged').length,
       in_transit: orders.filter((o) => o.status === 'in_transit').length,
       delivered: orders.filter((o) => o.status === 'delivered').length,
       cancelled: orders.filter((o) => o.status === 'cancelled').length,
