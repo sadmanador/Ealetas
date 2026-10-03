@@ -19,3 +19,12 @@ body {
 h1, h2, h3, .font-serif {
   font-family: var(--font-serif);
 }
+
+@keyframes autoDismiss {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

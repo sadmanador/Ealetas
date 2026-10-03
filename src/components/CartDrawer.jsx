@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useCart } from '@/context/CartContext';
 import { X, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 
@@ -15,16 +15,89 @@ export default function CartDrawer() {
     setIsCheckoutOpen,
   } = useCart();
 
-  if (!isCartOpen) return null;
+  const timerRef = useRef(null);
+
+  // Clear any existing timer
+  const clearAutoCloseTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  // Start auto-dismiss timer (e.g., 3.5 seconds)
+  const startAutoCloseTimer = () => {
+    clearAutoCloseTimer();
+    timerRef.current = setTimeout(() => {
+      setIsCartOpen(false);
+    }, 3500);
+  };
+
+  // Whenever drawer opens, start the auto-dismiss countdown
+  useEffect(() => {
+    if (isCartOpen) {
+      startAutoCloseTimer();
+    } else {
+      clearAutoCloseTimer();
+    }
+
+    return () => clearAutoCloseTimer();
+  }, [isCartOpen]);
+
+  // If clicked OUTSIDE the shopping bag (on backdrop), slide off IMMEDIATELY
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      clearAutoCloseTimer();
+      setIsCartOpen(false);
+    }
+  };
+
+  // Pause auto-close when user moves mouse inside the drawer
+  const handleDrawerMouseEnter = () => {
+    clearAutoCloseTimer();
+  };
+
+  // Resume auto-close when mouse leaves the drawer
+  const handleDrawerMouseLeave = () => {
+    if (isCartOpen) {
+      startAutoCloseTimer();
+    }
+  };
 
   const handleCheckoutClick = () => {
+    clearAutoCloseTimer();
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
   };
 
+  const handleCloseButtonClick = () => {
+    clearAutoCloseTimer();
+    setIsCartOpen(false);
+  };
+
   return (
-    <div className="fixed inset-0 z-[140] flex justify-end bg-black/50 backdrop-blur-xs transition-opacity duration-300">
-      <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col border-l border-[#eae5de] animate-in slide-in-from-right duration-300">
+    <div
+      onClick={handleBackdropClick}
+      className={`fixed inset-0 z-[140] flex justify-end bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-out ${
+        isCartOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}
+    >
+      {/* Sliding Drawer Container */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={handleDrawerMouseEnter}
+        onMouseLeave={handleDrawerMouseLeave}
+        className={`relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col border-l border-[#eae5de] transform transition-transform duration-300 ease-in-out ${
+          isCartOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Subtle Auto-Close Progress Bar */}
+        {isCartOpen && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-100 overflow-hidden z-20">
+            <div className="h-full bg-[#b88b42] animate-[autoDismiss_3.5s_linear_forwards]" />
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[#eae5de] bg-[#faf8f5]">
           <div className="flex items-center gap-2">
@@ -34,8 +107,9 @@ export default function CartDrawer() {
             </h2>
           </div>
           <button
-            onClick={() => setIsCartOpen(false)}
+            onClick={handleCloseButtonClick}
             className="p-1.5 text-gray-400 hover:text-gray-700 transition-colors"
+            aria-label="Close bag"
           >
             <X className="w-5 h-5" />
           </button>
@@ -48,7 +122,7 @@ export default function CartDrawer() {
               <ShoppingBag className="w-12 h-12 mx-auto text-[#dcd5cb]" />
               <p className="text-sm text-[#6b665f]">Your shopping bag is empty.</p>
               <button
-                onClick={() => setIsCartOpen(false)}
+                onClick={handleCloseButtonClick}
                 className="inline-block mt-2 px-4 py-2 border border-[#1c1a17] text-xs uppercase tracking-wider text-[#1c1a17] hover:bg-[#1c1a17] hover:text-white transition-colors"
               >
                 Explore Collection
@@ -129,7 +203,7 @@ export default function CartDrawer() {
               </span>
             </div>
             <p className="text-[11px] text-[#8e8880]">
-              Delivery fee calculated at next step (৳80 inside Dhaka City Corp, ৳120 outside).
+              Delivery fee automatically calculated at checkout (৳80 in Dhaka City Corp / ৳120 outside).
             </p>
             <button
               onClick={handleCheckoutClick}
