@@ -2,8 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
-import { getDivisions, getDistricts, getUpazilas } from '@/lib/geo';
-import { X, CheckCircle2, AlertCircle, Loader2, Sparkles, MapPin, Phone } from 'lucide-react';
+import { getDivisions, getDistricts, getUpazilas, isInsideDhakaCityCorp } from '@/lib/geo';
+import { generateOrderCardJpg } from '@/lib/orderCard';
+import {
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  MapPin,
+  Phone,
+  Download,
+  Truck,
+  ShieldCheck,
+} from 'lucide-react';
 
 export default function CheckoutModal() {
   const { isCheckoutOpen, setIsCheckoutOpen, items, subtotal, clearCart } = useCart();
@@ -13,10 +25,12 @@ export default function CheckoutModal() {
   const [name, setName] = useState('');
   const [division, setDivision] = useState('Dhaka');
   const [district, setDistrict] = useState('Dhaka');
-  const [upazila, setUpazila] = useState('');
+  const [upazila, setUpazila] = useState('Gulshan');
   const [fullAddress, setFullAddress] = useState('');
-  const [isDhakaCityCorp, setIsDhakaCityCorp] = useState(true);
   const [notes, setNotes] = useState('');
+
+  // Auto-calculated Delivery Zone (NOT customer selectable)
+  const [isDhakaCityCorp, setIsDhakaCityCorp] = useState(true);
 
   // Delivery charges from DB
   const [rates, setRates] = useState({ insideDhaka: 80, outsideDhaka: 120 });
@@ -26,6 +40,7 @@ export default function CheckoutModal() {
   const [autofilledNotice, setAutofilledNotice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
+  const [orderItemsSnapshot, setOrderItemsSnapshot] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Cascading lists from bd-geo-address
@@ -33,7 +48,7 @@ export default function CheckoutModal() {
   const districts = getDistricts(division);
   const upazilas = getUpazilas(district);
 
-  // Fetch delivery rates on mount
+  // Fetch delivery rates from server settings on mount
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => res.json())
@@ -48,6 +63,12 @@ export default function CheckoutModal() {
       .catch((e) => console.error(e));
   }, []);
 
+  // Automatically recalculate Dhaka City Corp zone whenever location changes
+  useEffect(() => {
+    const isCity = isInsideDhakaCityCorp(division, district, upazila);
+    setIsDhakaCityCorp(isCity);
+  }, [division, district, upazila]);
+
   // Update district when division changes
   const handleDivisionChange = (newDiv) => {
     setDivision(newDiv);
@@ -55,26 +76,16 @@ export default function CheckoutModal() {
     const firstDist = newDistricts.length > 0 ? newDistricts[0] : '';
     setDistrict(firstDist);
     const newUpazilas = getUpazilas(firstDist);
-    setUpazila(newUpazilas.length > 0 ? newUpazilas[0] : '');
-
-    if (newDiv !== 'Dhaka' || firstDist !== 'Dhaka') {
-      setIsDhakaCityCorp(false);
-    } else {
-      setIsDhakaCityCorp(true);
-    }
+    const firstUpz = newUpazilas.length > 0 ? newUpazilas[0] : '';
+    setUpazila(firstUpz);
   };
 
   // Update upazila when district changes
   const handleDistrictChange = (newDist) => {
     setDistrict(newDist);
     const newUpazilas = getUpazilas(newDist);
-    setUpazila(newUpazilas.length > 0 ? newUpazilas[0] : '');
-
-    if (newDist !== 'Dhaka') {
-      setIsDhakaCityCorp(false);
-    } else {
-      setIsDhakaCityCorp(true);
-    }
+    const firstUpz = newUpazilas.length > 0 ? newUpazilas[0] : '';
+    setUpazila(firstUpz);
   };
 
   // Customer phone lookup (debounced)
@@ -134,12 +145,20 @@ export default function CheckoutModal() {
       setErrorMessage('Please provide your full name and delivery street/house address.');
       return;
     }
+    if (!upazila) {
+      setErrorMessage('Please select your Upazila / Area to calculate delivery.');
+      return;
+    }
     if (items.length === 0) {
       setErrorMessage('Your bag is empty.');
       return;
     }
 
     setIsSubmitting(true);
+    // Snapshot items for receipt card generation
+    const currentItemsSnapshot = [...items];
+    setOrderItemsSnapshot(currentItemsSnapshot);
+
     try {
       const payload = {
         phone: phone.trim(),
@@ -149,7 +168,7 @@ export default function CheckoutModal() {
         upazila,
         fullAddress: fullAddress.trim(),
         isDhakaCityCorp,
-        items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+        items: currentItemsSnapshot.map((i) => ({ productId: i.id, quantity: i.quantity })),
         notes,
       };
 
@@ -166,11 +185,45 @@ export default function CheckoutModal() {
 
       setOrderSuccess(data.order);
       clearCart();
+
+      // Automatically generate & download the order receipt card (JPG)
+      setTimeout(() => {
+        try {
+          generateOrderCardJpg({
+            orderNumber: data.order.orderNumber,
+            customerName: name.trim(),
+            customerPhone: phone.trim(),
+            deliveryAddress: `${fullAddress.trim()}, ${upazila}, ${district}, ${division}`,
+            isDhakaCityCorp,
+            items: currentItemsSnapshot,
+            subtotal,
+            deliveryCharge,
+            totalAmount: totalPayable,
+          });
+        } catch (cardErr) {
+          console.error('Failed to auto-download card:', cardErr);
+        }
+      }, 500);
     } catch (err) {
       setErrorMessage(err.message || 'Something went wrong while placing your order.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleManualCardDownload = () => {
+    if (!orderSuccess) return;
+    generateOrderCardJpg({
+      orderNumber: orderSuccess.orderNumber,
+      customerName: name.trim(),
+      customerPhone: phone.trim(),
+      deliveryAddress: `${fullAddress.trim()}, ${upazila}, ${district}, ${division}`,
+      isDhakaCityCorp,
+      items: orderItemsSnapshot,
+      subtotal,
+      deliveryCharge,
+      totalAmount: totalPayable,
+    });
   };
 
   if (!isCheckoutOpen) return null;
@@ -199,7 +252,7 @@ export default function CheckoutModal() {
           </button>
         </div>
 
-        {/* Success Screen */}
+        {/* Success Screen with Auto-Downloaded JPG Card */}
         {orderSuccess ? (
           <div className="p-8 text-center space-y-4">
             <div className="w-16 h-16 mx-auto rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -209,31 +262,59 @@ export default function CheckoutModal() {
               Thank You For Your Order!
             </h3>
             <p className="text-sm text-[#6b665f] max-w-md mx-auto">
-              Your order <span className="font-semibold text-[#1c1a17]">#{orderSuccess.orderNumber}</span> has been received. Our concierge will contact you shortly to confirm delivery.
+              Your order <span className="font-semibold text-[#1c1a17]">#{orderSuccess.orderNumber}</span> has been received.
             </p>
+
+            {/* Notification about auto-download */}
+            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-sm max-w-md mx-auto flex items-center gap-2 text-left">
+              <Download className="w-4 h-4 text-[#b88b42] shrink-0" />
+              <span>
+                Your official <strong>Order Card (JPG)</strong> with order ID and items has been automatically downloaded to your device!
+              </span>
+            </div>
+
             <div className="p-4 bg-[#faf8f5] border border-[#eae5de] rounded-sm text-left max-w-md mx-auto text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Order Number:</span>
+                <span className="font-semibold text-gray-900 font-mono">#{orderSuccess.orderNumber}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Order Total:</span>
                 <span className="font-semibold text-gray-900">৳{orderSuccess.totalAmount.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Delivery Status:</span>
-                <span className="font-semibold uppercase tracking-wider text-amber-700">{orderSuccess.status}</span>
+                <span className="text-gray-500">Delivery Zone:</span>
+                <span className="font-semibold text-amber-800">
+                  {isDhakaCityCorp ? 'Inside Dhaka City Corp (80 ৳)' : 'Outside Dhaka (120 ৳)'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Payment:</span>
                 <span className="font-semibold text-gray-900">Cash on Delivery</span>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setIsCheckoutOpen(false);
-                setOrderSuccess(null);
-              }}
-              className="mt-4 px-6 py-2.5 bg-[#1c1a17] text-white text-xs uppercase tracking-widest hover:bg-[#b88b42] transition-colors rounded-sm"
-            >
-              Continue Browsing
-            </button>
+
+            {/* Download Again button */}
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleManualCardDownload}
+                className="px-5 py-2.5 bg-[#b88b42] text-white text-xs uppercase tracking-widest font-medium hover:bg-[#9e7135] transition-colors rounded-sm flex items-center gap-2 shadow-sm"
+              >
+                <Download className="w-4 h-4" /> Download Order Card (JPG)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCheckoutOpen(false);
+                  setOrderSuccess(null);
+                }}
+                className="px-5 py-2.5 border border-[#1c1a17] text-[#1c1a17] text-xs uppercase tracking-widest hover:bg-[#1c1a17] hover:text-white transition-colors rounded-sm"
+              >
+                Continue Browsing
+              </button>
+            </div>
           </div>
         ) : (
           /* Checkout Form */
@@ -303,7 +384,7 @@ export default function CheckoutModal() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {/* Division */}
                 <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">Division</label>
+                  <label className="block text-[11px] text-[#6b665f] mb-1">Division *</label>
                   <select
                     value={division}
                     onChange={(e) => handleDivisionChange(e.target.value)}
@@ -319,7 +400,7 @@ export default function CheckoutModal() {
 
                 {/* District */}
                 <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">District</label>
+                  <label className="block text-[11px] text-[#6b665f] mb-1">District *</label>
                   <select
                     value={district}
                     onChange={(e) => handleDistrictChange(e.target.value)}
@@ -335,12 +416,13 @@ export default function CheckoutModal() {
 
                 {/* Upazila / Thana */}
                 <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">Upazila / Area</label>
+                  <label className="block text-[11px] text-[#6b665f] mb-1">Upazila / Area *</label>
                   <select
                     value={upazila}
                     onChange={(e) => setUpazila(e.target.value)}
                     className="w-full px-2.5 py-2 bg-white border border-[#dcd5cb] text-xs rounded-sm focus:outline-none focus:border-[#b88b42]"
                   >
+                    <option value="">-- Select Area --</option>
                     {upazilas.map((u) => (
                       <option key={u} value={u}>
                         {u}
@@ -366,48 +448,43 @@ export default function CheckoutModal() {
               </div>
             </div>
 
-            {/* 4. Delivery Area Selection & Charges */}
+            {/* 4. Automated Delivery Zone & Fee (Not customer selectable) */}
             <div className="p-3.5 bg-[#faf8f5] border border-[#eae5de] rounded-sm space-y-2">
-              <label className="block text-xs uppercase tracking-wider font-semibold text-[#1c1a17]">
-                Delivery Zone & Fee
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label
-                  className={`flex items-center gap-2 p-2.5 border rounded-sm cursor-pointer transition-all ${
-                    isDhakaCityCorp
-                      ? 'border-[#b88b42] bg-[#fdfaf5] font-medium text-[#1c1a17]'
-                      : 'border-[#eae5de] bg-white text-[#6b665f]'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="deliveryZone"
-                    checked={isDhakaCityCorp}
-                    onChange={() => setIsDhakaCityCorp(true)}
-                    className="accent-[#b88b42]"
-                  />
-                  <span>Inside Dhaka City Corp (North & South)</span>
-                  <span className="ml-auto font-semibold text-[#b88b42]">৳{rates.insideDhaka}</span>
-                </label>
-
-                <label
-                  className={`flex items-center gap-2 p-2.5 border rounded-sm cursor-pointer transition-all ${
-                    !isDhakaCityCorp
-                      ? 'border-[#b88b42] bg-[#fdfaf5] font-medium text-[#1c1a17]'
-                      : 'border-[#eae5de] bg-white text-[#6b665f]'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="deliveryZone"
-                    checked={!isDhakaCityCorp}
-                    onChange={() => setIsDhakaCityCorp(false)}
-                    className="accent-[#b88b42]"
-                  />
-                  <span>Outside Dhaka / Suburbs</span>
-                  <span className="ml-auto font-semibold text-[#b88b42]">৳{rates.outsideDhaka}</span>
-                </label>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider font-semibold text-[#1c1a17] flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-[#b88b42]" />
+                  Delivery Zone & Fee (Auto-Calculated)
+                </span>
+                <span className="text-[10px] text-gray-500 font-mono">
+                  {isDhakaCityCorp ? 'City Corp Detected' : 'Outside City Corp'}
+                </span>
               </div>
+
+              {isDhakaCityCorp ? (
+                <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-sm flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-semibold text-emerald-900 block">
+                      ✓ Inside Dhaka City Corporation (North & South)
+                    </span>
+                    <span className="text-[11px] text-emerald-700">
+                      Auto-detected from: {upazila || 'Dhaka'}, {district}
+                    </span>
+                  </div>
+                  <span className="font-bold text-sm text-emerald-900">৳{rates.insideDhaka}</span>
+                </div>
+              ) : (
+                <div className="p-2.5 bg-amber-50/80 border border-amber-200 rounded-sm flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-semibold text-amber-900 block">
+                      ✓ Outside Dhaka / Nationwide Delivery
+                    </span>
+                    <span className="text-[11px] text-amber-700">
+                      Auto-detected from: {upazila || 'Area'}, {district}
+                    </span>
+                  </div>
+                  <span className="font-bold text-sm text-amber-900">৳{rates.outsideDhaka}</span>
+                </div>
+              )}
             </div>
 
             {/* Special Instructions */}
@@ -432,13 +509,15 @@ export default function CheckoutModal() {
               </div>
               <div className="flex justify-between text-[#6b665f]">
                 <span>
-                  Delivery Charge ({isDhakaCityCorp ? 'Inside Dhaka City' : 'Outside Dhaka'}):
+                  Delivery Charge ({isDhakaCityCorp ? 'Inside Dhaka City Corp' : 'Outside Dhaka'}):
                 </span>
                 <span className="font-medium text-[#1c1a17]">৳{deliveryCharge}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold text-[#1c1a17] pt-2 border-t border-dashed border-[#eae5de]">
                 <span>Total Payable (Cash on Delivery):</span>
-                <span className="text-[#b88b42] text-base">৳{totalPayable.toLocaleString()}</span>
+                <span className="text-[#b88b42] text-base font-bold">
+                  ৳{totalPayable.toLocaleString()}
+                </span>
               </div>
             </div>
 
