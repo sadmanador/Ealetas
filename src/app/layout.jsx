@@ -5,8 +5,8 @@ import CheckoutModal from '@/components/CheckoutModal';
 import AnalyticsTracker from '@/components/AnalyticsTracker';
 
 export const metadata = {
-  title: 'Ealetas | Fine Handcrafted Jewelry',
-  description: 'Exquisite handcrafted jewelry, ethical diamonds, and rare gemstones for timeless elegance.',
+  title: 'Eletas Jewels | Timeless Beauty Inspired by the Treasures of the Sea',
+  description: 'Ocean-inspired fine jewelry, luminous pearls, sapphire gemstones, and handcrafted treasures made to be cherished.',
 };
 
 export default function RootLayout({ children }) {

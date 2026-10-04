@@ -2,22 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600;700&display=swap');
 
 :root {
   --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-sans: 'Montserrat', system-ui, sans-serif;
+  --font-script: 'Alex Brush', cursive;
+  --color-sapphire: #0f388a;
+  --color-sapphire-dark: #0a2561;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #faf8f5;
-  color: #1c1a17;
+  background-color: #fbfcff;
+  color: #0d2342;
   overflow-x: hidden;
 }
 
 h1, h2, h3, .font-serif {
   font-family: var(--font-serif);
+}
+
+.font-script {
+  font-family: var(--font-script);
 }
 
 @keyframes autoDismiss {

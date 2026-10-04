@@ -40,24 +40,24 @@ export default function AdminSidebar({ session }) {
   ];
 
   return (
-    <aside className="w-full md:w-64 bg-[#161513] text-[#d1cbc2] flex flex-col justify-between shrink-0 border-r border-[#262420]">
+    <aside className="w-full md:w-64 bg-[#081a38] text-[#c0d3eb] flex flex-col justify-between shrink-0 border-r border-[#122e5a]">
       <div>
         {/* Brand */}
-        <div className="p-6 border-b border-[#262420]">
-          <Link href="/" className="block">
-            <span className="font-serif text-2xl tracking-[0.2em] text-white block">
-              EALETAS
+        <div className="p-6 border-b border-[#122e5a]">
+          <Link href="/admin" className="block">
+            <span className="font-serif text-2xl tracking-[0.15em] text-white block">
+              ELETAS
             </span>
-            <span className="text-[8px] tracking-[0.35em] text-[#b88b42] uppercase block">
-              ADMINISTRATION ATELIER
+            <span className="text-[9px] tracking-[0.3em] text-[#8bb9ee] uppercase block font-medium">
+              JEWELS ADMINISTRATION
             </span>
           </Link>
         </div>
 
         {/* Current Admin badge */}
-        <div className="p-4 mx-4 my-3 bg-[#1e1d1a] border border-[#2a2825] rounded-xs text-xs space-y-1">
+        <div className="p-3.5 mx-4 my-3 bg-[#0d254c] border border-[#16396e] rounded-lg text-xs space-y-1">
           <div className="font-medium text-white line-clamp-1">{session?.user?.name || 'Administrator'}</div>
-          <div className="text-[11px] text-[#b88b42] flex items-center gap-1.5">
+          <div className="text-[11px] text-[#8bb9ee] flex items-center gap-1.5">
             <PhoneCall className="w-3 h-3" />
             <span>SMS: {session?.user?.phone || 'Not set'}</span>
           </div>
@@ -72,10 +72,10 @@ export default function AdminSidebar({ session }) {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xs text-xs uppercase tracking-wider font-medium transition-all ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs uppercase tracking-wider font-medium transition-all ${
                   isActive
-                    ? 'bg-[#b88b42] text-white shadow-sm'
-                    : 'text-[#9c978f] hover:text-white hover:bg-[#201e1b]'
+                    ? 'bg-[#0f388a] text-white shadow-md'
+                    : 'text-[#8daecf] hover:text-white hover:bg-[#0d254c]'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />

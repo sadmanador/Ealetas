@@ -48,10 +48,10 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <article className="group bg-white border border-[#eae5de] rounded-sm flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+    <article className="group bg-white border border-[#e2edf8] rounded-xl flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-[#0f388a]/5 hover:-translate-y-1">
       {/* Product Image Container */}
       <div
-        className="relative aspect-square overflow-hidden bg-[#f7f5f2] cursor-pointer"
+        className="relative aspect-square overflow-hidden bg-[#f4f8fd] cursor-pointer"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -62,24 +62,33 @@ export default function ProductCard({ product }) {
           loading="lazy"
         />
 
+        {/* Wishlist Heart Button from Theme */}
+        <button
+          type="button"
+          aria-label="Add to Wishlist"
+          className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs text-[#0f388a] hover:text-rose-500 hover:bg-white shadow-xs flex items-center justify-center text-xs transition-colors z-10"
+        >
+          ♡
+        </button>
+
         {/* Tags / Badge */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
           {product.tags &&
             product.tags.split(',').slice(0, 1).map((tag, idx) => (
               <span
                 key={idx}
-                className="bg-white/90 backdrop-blur-sm text-[#1c1a17] text-[10px] tracking-widest uppercase font-semibold px-2 py-0.5 rounded-sm shadow-sm"
+                className="bg-white/90 backdrop-blur-xs text-[#0f388a] text-[10px] tracking-wider uppercase font-semibold px-2 py-0.5 rounded-sm shadow-xs border border-[#d8e6f8]"
               >
                 {tag.trim()}
               </span>
             ))}
           {isOutOfStock && (
-            <span className="bg-red-800 text-white text-[10px] tracking-wider uppercase font-semibold px-2 py-0.5 rounded-sm">
+            <span className="bg-rose-700 text-white text-[10px] tracking-wider uppercase font-semibold px-2 py-0.5 rounded-sm">
               Sold Out
             </span>
           )}
           {isLowStock && (
-            <span className="bg-amber-700 text-white text-[10px] tracking-wider uppercase font-medium px-2 py-0.5 rounded-sm">
+            <span className="bg-amber-600 text-white text-[10px] tracking-wider uppercase font-medium px-2 py-0.5 rounded-sm">
               Only {product.quantity} Left
             </span>
           )}
@@ -88,7 +97,7 @@ export default function ProductCard({ product }) {
 
       {/* Dot Image Slider Under Image */}
       {images.length > 1 && (
-        <div className="flex items-center justify-center gap-1.5 py-2.5 bg-white border-b border-[#f3eee8]">
+        <div className="flex items-center justify-center gap-1.5 py-2.5 bg-white border-b border-[#edf4fc]">
           {images.map((_, idx) => (
             <button
               key={idx}
@@ -97,8 +106,8 @@ export default function ProductCard({ product }) {
               aria-label={`View image ${idx + 1}`}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 currentImgIndex === idx
-                  ? 'w-6 bg-[#b88b42]'
-                  : 'w-1.5 bg-[#dcd5cb] hover:bg-[#b88b42]/60'
+                  ? 'w-6 bg-[#0f388a]'
+                  : 'w-1.5 bg-[#d0e0f5] hover:bg-[#0f388a]/60'
               }`}
             />
           ))}
@@ -107,22 +116,29 @@ export default function ProductCard({ product }) {
 
       {/* Product Information */}
       <div className="p-4 flex flex-col flex-grow">
-        <span className="text-[11px] tracking-widest text-[#b88b42] uppercase font-medium mb-1">
+        <span className="text-[10px] tracking-widest text-[#0f388a] uppercase font-semibold mb-1">
           {product.category}
         </span>
-        <h3 className="font-serif text-lg font-medium text-[#1c1a17] line-clamp-1 mb-1">
+        <h3 className="font-serif text-lg font-medium text-[#0d2342] line-clamp-1 mb-1">
           {product.name}
         </h3>
-        <p className="text-xs text-[#6b665f] line-clamp-2 leading-relaxed mb-3 flex-grow">
+        
+        {/* Rating Stars from Theme */}
+        <div className="flex items-center gap-1.5 text-xs mb-2">
+          <span className="text-[#c59b3f] tracking-tighter">★★★★★</span>
+          <span className="text-[10px] text-[#6e85a0]">(48)</span>
+        </div>
+
+        <p className="text-xs text-[#5e7692] line-clamp-2 leading-relaxed mb-3 flex-grow font-light">
           {product.description}
         </p>
 
         {/* Pricing */}
-        <div className="flex items-baseline justify-between pt-2 border-t border-[#f0ece5] mb-3">
-          <span className="text-base font-semibold text-[#1c1a17]">
+        <div className="flex items-baseline justify-between pt-2 border-t border-[#edf4fc] mb-3">
+          <span className="text-base font-semibold text-[#0d2342]">
             ৳{Number(product.price).toLocaleString()}
           </span>
-          <span className="text-[11px] text-[#8e8880]">
+          <span className="text-[11px] text-[#7a93b0]">
             {product.quantity > 0 ? `${product.quantity} in stock` : 'Out of stock'}
           </span>
         </div>
@@ -133,12 +149,12 @@ export default function ProductCard({ product }) {
             type="button"
             onClick={handleAddToCart}
             disabled={isOutOfStock}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs tracking-wider uppercase font-medium rounded-sm border transition-all duration-200 ${
+            className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs tracking-wider uppercase font-medium rounded-md border transition-all duration-200 ${
               isOutOfStock
-                ? 'opacity-40 cursor-not-allowed border-gray-300 text-gray-400'
+                ? 'opacity-40 cursor-not-allowed border-gray-200 text-gray-400'
                 : addedAnimation
-                ? 'bg-emerald-800 text-white border-emerald-800'
-                : 'border-[#1c1a17] text-[#1c1a17] hover:bg-[#1c1a17] hover:text-white'
+                ? 'bg-emerald-700 text-white border-emerald-700'
+                : 'border-[#0f388a] text-[#0f388a] hover:bg-[#0f388a] hover:text-white'
             }`}
           >
             {addedAnimation ? (
@@ -156,10 +172,10 @@ export default function ProductCard({ product }) {
             type="button"
             onClick={handleBuyNow}
             disabled={isOutOfStock}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs tracking-wider uppercase font-medium rounded-sm transition-all duration-200 ${
+            className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs tracking-wider uppercase font-medium rounded-md transition-all duration-200 ${
               isOutOfStock
-                ? 'opacity-40 cursor-not-allowed bg-gray-300 text-gray-500'
-                : 'bg-[#b88b42] text-white hover:bg-[#9e7135] shadow-sm'
+                ? 'opacity-40 cursor-not-allowed bg-gray-200 text-gray-400'
+                : 'bg-[#0f388a] text-white hover:bg-[#0a2561] shadow-sm'
             }`}
           >
             <Zap className="w-3.5 h-3.5 fill-current" /> Buy Now

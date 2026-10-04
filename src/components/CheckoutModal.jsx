@@ -232,12 +232,12 @@ export default function CheckoutModal() {
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-white border border-[#eae5de] rounded-sm shadow-2xl overflow-hidden my-8">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#eae5de] bg-[#faf8f5]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e4edf8] bg-[#f8fbfe]">
           <div>
-            <span className="text-[10px] tracking-widest text-[#b88b42] uppercase font-semibold">
-              EALETAS FINE JEWELRY
+            <span className="text-[10px] tracking-widest text-[#0f388a] uppercase font-semibold">
+              ELETAS JEWELS
             </span>
-            <h2 className="font-serif text-xl font-medium text-[#1c1a17]">
+            <h2 className="font-serif text-xl font-medium text-[#0d2342]">
               {orderSuccess ? 'Order Confirmation' : 'Complete Your Order'}
             </h2>
           </div>
@@ -246,7 +246,7 @@ export default function CheckoutModal() {
               setIsCheckoutOpen(false);
               setOrderSuccess(null);
             }}
-            className="p-1.5 text-gray-400 hover:text-gray-700 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-[#0d2342] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -258,22 +258,22 @@ export default function CheckoutModal() {
             <div className="w-16 h-16 mx-auto rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <CheckCircle2 className="w-10 h-10" />
             </div>
-            <h3 className="font-serif text-2xl font-medium text-[#1c1a17]">
+            <h3 className="font-serif text-2xl font-medium text-[#0d2342]">
               Thank You For Your Order!
             </h3>
-            <p className="text-sm text-[#6b665f] max-w-md mx-auto">
-              Your order <span className="font-semibold text-[#1c1a17]">#{orderSuccess.orderNumber}</span> has been received.
+            <p className="text-sm text-[#5e7692] max-w-md mx-auto">
+              Your order <span className="font-semibold text-[#0d2342]">#{orderSuccess.orderNumber}</span> has been received.
             </p>
 
             {/* Notification about auto-download */}
-            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-sm max-w-md mx-auto flex items-center gap-2 text-left">
-              <Download className="w-4 h-4 text-[#b88b42] shrink-0" />
+            <div className="p-3 bg-[#eef5fd] border border-[#cde0f8] text-[#0f388a] text-xs rounded-lg max-w-md mx-auto flex items-center gap-2 text-left">
+              <Download className="w-4 h-4 text-[#0f388a] shrink-0" />
               <span>
                 Your official <strong>Order Card (JPG)</strong> with order ID and items has been automatically downloaded to your device!
               </span>
             </div>
 
-            <div className="p-4 bg-[#faf8f5] border border-[#eae5de] rounded-sm text-left max-w-md mx-auto text-xs space-y-2">
+            <div className="p-4 bg-[#f8fbfe] border border-[#e4edf8] rounded-lg text-left max-w-md mx-auto text-xs space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-500">Order Number:</span>
                 <span className="font-semibold text-gray-900 font-mono">#{orderSuccess.orderNumber}</span>
@@ -284,7 +284,7 @@ export default function CheckoutModal() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Delivery Zone:</span>
-                <span className="font-semibold text-amber-800">
+                <span className="font-semibold text-[#0f388a]">
                   {isDhakaCityCorp ? 'Inside Dhaka City Corp (80 ৳)' : 'Outside Dhaka (120 ৳)'}
                 </span>
               </div>
@@ -299,7 +299,7 @@ export default function CheckoutModal() {
               <button
                 type="button"
                 onClick={handleManualCardDownload}
-                className="px-5 py-2.5 bg-[#b88b42] text-white text-xs uppercase tracking-widest font-medium hover:bg-[#9e7135] transition-colors rounded-sm flex items-center gap-2 shadow-sm"
+                className="px-5 py-2.5 bg-[#0f388a] text-white text-xs uppercase tracking-widest font-medium hover:bg-[#0a2561] transition-colors rounded-md flex items-center gap-2 shadow-sm"
               >
                 <Download className="w-4 h-4" /> Download Order Card (JPG)
               </button>
@@ -310,7 +310,7 @@ export default function CheckoutModal() {
                   setIsCheckoutOpen(false);
                   setOrderSuccess(null);
                 }}
-                className="px-5 py-2.5 border border-[#1c1a17] text-[#1c1a17] text-xs uppercase tracking-widest hover:bg-[#1c1a17] hover:text-white transition-colors rounded-sm"
+                className="px-5 py-2.5 border border-[#d2e2f6] text-[#0d2342] text-xs uppercase tracking-widest hover:bg-[#f0f6fd] transition-colors rounded-md"
               >
                 Continue Browsing
               </button>
@@ -327,14 +327,14 @@ export default function CheckoutModal() {
             )}
 
             {/* 1. Phone Number Taken First */}
-            <div className="space-y-1.5 p-4 bg-[#fbf9f6] border border-[#ebdcc7] rounded-sm">
+            <div className="space-y-1.5 p-4 bg-[#f0f6fd] border border-[#cde0f8] rounded-lg">
               <div className="flex items-center justify-between">
-                <label className="text-xs uppercase tracking-wider font-semibold text-[#1c1a17] flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-[#b88b42]" />
+                <label className="text-xs uppercase tracking-wider font-semibold text-[#0d2342] flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-[#0f388a]" />
                   Mobile Number (Required First) *
                 </label>
                 {isLookingUp && (
-                  <span className="text-[11px] text-[#b88b42] flex items-center gap-1">
+                  <span className="text-[11px] text-[#0f388a] flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Looking up profile...
                   </span>
                 )}
@@ -345,14 +345,14 @@ export default function CheckoutModal() {
                 placeholder="e.g. 017XXXXXXXX"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-[#dcd5cb] text-sm rounded-sm focus:outline-none focus:border-[#b88b42]"
+                className="w-full px-3.5 py-2.5 bg-white border border-[#d2e2f6] text-sm rounded-md focus:outline-none focus:border-[#0f388a]"
               />
-              <p className="text-[11px] text-[#8e8880]">
+              <p className="text-[11px] text-[#6e85a0]">
                 Enter your phone number first. If you have ordered before, your address will be automatically populated!
               </p>
 
               {autofilledNotice && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 px-2.5 py-1.5 rounded-sm border border-emerald-200">
+                <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 px-2.5 py-1.5 rounded-md border border-emerald-200">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{autofilledNotice}</span>
                 </div>
@@ -361,7 +361,7 @@ export default function CheckoutModal() {
 
             {/* 2. Customer Name */}
             <div>
-              <label className="block text-xs uppercase tracking-wider font-medium text-[#1c1a17] mb-1">
+              <label className="block text-xs uppercase tracking-wider font-medium text-[#0d2342] mb-1">
                 Full Name *
               </label>
               <input
@@ -370,25 +370,25 @@ export default function CheckoutModal() {
                 placeholder="Your full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-[#dcd5cb] text-sm rounded-sm focus:outline-none focus:border-[#b88b42]"
+                className="w-full px-3 py-2 bg-white border border-[#d2e2f6] text-sm rounded-md focus:outline-none focus:border-[#0f388a]"
               />
             </div>
 
             {/* 3. Address via bd-geo-address */}
             <div className="space-y-3">
-              <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider font-medium text-[#1c1a17]">
-                <MapPin className="w-3.5 h-3.5 text-[#b88b42]" />
+              <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider font-medium text-[#0d2342]">
+                <MapPin className="w-3.5 h-3.5 text-[#0f388a]" />
                 Delivery Address (bd-geo-address) *
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {/* Division */}
                 <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">Division *</label>
+                  <label className="block text-[11px] text-[#6e85a0] mb-1">Division *</label>
                   <select
                     value={division}
                     onChange={(e) => handleDivisionChange(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-white border border-[#dcd5cb] text-xs rounded-sm focus:outline-none focus:border-[#b88b42]"
+                    className="w-full px-2.5 py-2 bg-white border border-[#d2e2f6] text-xs rounded-md focus:outline-none focus:border-[#0f388a]"
                   >
                     {divisions.map((d) => (
                       <option key={d} value={d}>
@@ -400,11 +400,11 @@ export default function CheckoutModal() {
 
                 {/* District */}
                 <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">District *</label>
+                  <label className="block text-[11px] text-[#6e85a0] mb-1">District *</label>
                   <select
                     value={district}
                     onChange={(e) => handleDistrictChange(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-white border border-[#dcd5cb] text-xs rounded-sm focus:outline-none focus:border-[#b88b42]"
+                    className="w-full px-2.5 py-2 bg-white border border-[#d2e2f6] text-xs rounded-md focus:outline-none focus:border-[#0f388a]"
                   >
                     {districts.map((dist) => (
                       <option key={dist} value={dist}>
@@ -416,11 +416,11 @@ export default function CheckoutModal() {
 
                 {/* Upazila / Thana */}
                 <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">Upazila / Area *</label>
+                  <label className="block text-[11px] text-[#6e85a0] mb-1">Upazila / Area *</label>
                   <select
                     value={upazila}
                     onChange={(e) => setUpazila(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-white border border-[#dcd5cb] text-xs rounded-sm focus:outline-none focus:border-[#b88b42]"
+                    className="w-full px-2.5 py-2 bg-white border border-[#d2e2f6] text-xs rounded-md focus:outline-none focus:border-[#0f388a]"
                   >
                     <option value="">-- Select Area --</option>
                     {upazilas.map((u) => (
@@ -434,7 +434,7 @@ export default function CheckoutModal() {
 
               {/* Detailed Street Address */}
               <div>
-                <label className="block text-[11px] text-[#6b665f] mb-1">
+                <label className="block text-[11px] text-[#6e85a0] mb-1">
                   Street, House, Flat & Landmark *
                 </label>
                 <textarea
@@ -443,16 +443,16 @@ export default function CheckoutModal() {
                   placeholder="House #, Road #, Sector/Area, Landmark..."
                   value={fullAddress}
                   onChange={(e) => setFullAddress(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-[#dcd5cb] text-xs rounded-sm focus:outline-none focus:border-[#b88b42]"
+                  className="w-full px-3 py-2 bg-white border border-[#d2e2f6] text-xs rounded-md focus:outline-none focus:border-[#0f388a]"
                 />
               </div>
             </div>
 
             {/* 4. Automated Delivery Zone & Fee (Not customer selectable) */}
-            <div className="p-3.5 bg-[#faf8f5] border border-[#eae5de] rounded-sm space-y-2">
+            <div className="p-3.5 bg-[#f8fbfe] border border-[#e4edf8] rounded-lg space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider font-semibold text-[#1c1a17] flex items-center gap-1.5">
-                  <Truck className="w-3.5 h-3.5 text-[#b88b42]" />
+                <span className="text-xs uppercase tracking-wider font-semibold text-[#0d2342] flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-[#0f388a]" />
                   Delivery Zone & Fee (Auto-Calculated)
                 </span>
                 <span className="text-[10px] text-gray-500 font-mono">
@@ -461,7 +461,7 @@ export default function CheckoutModal() {
               </div>
 
               {isDhakaCityCorp ? (
-                <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-sm flex items-center justify-between text-xs">
+                <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-md flex items-center justify-between text-xs">
                   <div>
                     <span className="font-semibold text-emerald-900 block">
                       ✓ Inside Dhaka City Corporation (North & South)
@@ -473,23 +473,23 @@ export default function CheckoutModal() {
                   <span className="font-bold text-sm text-emerald-900">৳{rates.insideDhaka}</span>
                 </div>
               ) : (
-                <div className="p-2.5 bg-amber-50/80 border border-amber-200 rounded-sm flex items-center justify-between text-xs">
+                <div className="p-2.5 bg-blue-50/80 border border-blue-200 rounded-md flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-semibold text-amber-900 block">
+                    <span className="font-semibold text-[#0f388a] block">
                       ✓ Outside Dhaka / Nationwide Delivery
                     </span>
-                    <span className="text-[11px] text-amber-700">
+                    <span className="text-[11px] text-blue-700">
                       Auto-detected from: {upazila || 'Area'}, {district}
                     </span>
                   </div>
-                  <span className="font-bold text-sm text-amber-900">৳{rates.outsideDhaka}</span>
+                  <span className="font-bold text-sm text-[#0f388a]">৳{rates.outsideDhaka}</span>
                 </div>
               )}
             </div>
 
             {/* Special Instructions */}
             <div>
-              <label className="block text-[11px] text-[#6b665f] mb-1">
+              <label className="block text-[11px] text-[#6e85a0] mb-1">
                 Order Notes (Optional)
               </label>
               <input
@@ -497,25 +497,25 @@ export default function CheckoutModal() {
                 placeholder="Gift note, delivery timing preferences..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-[#dcd5cb] text-xs rounded-sm focus:outline-none focus:border-[#b88b42]"
+                className="w-full px-3 py-1.5 bg-white border border-[#d2e2f6] text-xs rounded-md focus:outline-none focus:border-[#0f388a]"
               />
             </div>
 
             {/* Pricing Summary */}
-            <div className="pt-3 border-t border-[#eae5de] space-y-1.5 text-xs">
-              <div className="flex justify-between text-[#6b665f]">
+            <div className="pt-3 border-t border-[#e4edf8] space-y-1.5 text-xs">
+              <div className="flex justify-between text-[#5e7692]">
                 <span>Items Subtotal ({items.length}):</span>
                 <span>৳{subtotal.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-[#6b665f]">
+              <div className="flex justify-between text-[#5e7692]">
                 <span>
                   Delivery Charge ({isDhakaCityCorp ? 'Inside Dhaka City Corp' : 'Outside Dhaka'}):
                 </span>
-                <span className="font-medium text-[#1c1a17]">৳{deliveryCharge}</span>
+                <span className="font-medium text-[#0d2342]">৳{deliveryCharge}</span>
               </div>
-              <div className="flex justify-between text-sm font-semibold text-[#1c1a17] pt-2 border-t border-dashed border-[#eae5de]">
+              <div className="flex justify-between text-sm font-semibold text-[#0d2342] pt-2 border-t border-dashed border-[#d2e2f6]">
                 <span>Total Payable (Cash on Delivery):</span>
-                <span className="text-[#b88b42] text-base font-bold">
+                <span className="text-[#0f388a] text-base font-bold">
                   ৳{totalPayable.toLocaleString()}
                 </span>
               </div>
@@ -526,14 +526,14 @@ export default function CheckoutModal() {
               <button
                 type="button"
                 onClick={() => setIsCheckoutOpen(false)}
-                className="px-4 py-2 border border-[#dcd5cb] text-xs uppercase tracking-wider text-[#6b665f] hover:bg-[#faf8f5] rounded-sm"
+                className="px-4 py-2 border border-[#d2e2f6] text-xs uppercase tracking-wider text-[#5e7692] hover:bg-[#f0f6fd] rounded-md transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || items.length === 0}
-                className="flex items-center gap-2 px-6 py-2.5 bg-[#1c1a17] text-white text-xs uppercase tracking-widest font-medium hover:bg-[#b88b42] transition-colors rounded-sm shadow-md disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 bg-[#0f388a] text-white text-xs uppercase tracking-widest font-medium hover:bg-[#0a2561] transition-colors rounded-md shadow-md disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
