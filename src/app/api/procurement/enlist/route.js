@@ -17,7 +17,9 @@ export async function POST(request) {
       name,
       category,
       retailPrice,
+      wholesaleCost,
       description,
+      tags,
       commonImages,
       images,
     } = body;
@@ -92,60 +94,126 @@ export async function POST(request) {
     // 2. Enlist as a brand NEW product
     const productName = (name || item.name).trim();
     const cleanSlug = `${productName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString().slice(-4)}`;
-    const sellingPrice = Math.max(0, Number(retailPrice) || item.unitPrice * 2); // default 2x markup if not given
+    const sellingPrice = Math.max(0, Number(retailPrice) || Number(body.price) || item.unitPrice * 2);
+    const costPrice = wholesaleCost !== undefined && wholesaleCost !== '' ? Number(wholesaleCost) : item.unitPrice;
 
-    const parsedImages = images && Array.isArray(images) && images.length > 0
-      ? JSON.stringify(images)
-      : JSON.stringify(['https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=80']);
+    // Common images: max 2
+    let commonImageArray = [];
+    if (Array.isArray(commonImages)) {
+      commonImageArray = commonImages.slice(0, 2);
+    } else if (typeof commonImages === 'string') {
+      try {
+        const parsed = JSON.parse(commonImages);
+        commonImageArray = Array.isArray(parsed) ? parsed.slice(0, 2) : [commonImages];
+      } catch (e) {
+        commonImageArray = commonImages.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 2);
+      }
+    }
 
-    const parsedCommonImages = commonImages && Array.isArray(commonImages)
-      ? JSON.stringify(commonImages)
-      : '[]';
+    // Determine variant list
+    let variantList = [];
+    if (Array.isArray(body.variants) && body.variants.length > 0) {
+      variantList = body.variants;
+    } else if (item.colorName) {
+      variantList = [
+        {
+          colorName: item.colorName,
+          colorCode: item.colorCode || '#0f388a',
+          quantity: item.quantity,
+          images: Array.isArray(images) ? images : [],
+        },
+      ];
+    }
 
-    const newProduct = await prisma.product.create({
-      data: {
-        name: productName,
-        slug: cleanSlug,
-        description: description || `Fine handcrafted ${item.category.toLowerCase()} sourced with genuine quality materials.`,
-        price: sellingPrice,
-        wholesaleCost: item.unitPrice, // AUTO-INHERITED from procurement!
-        category: category || item.category || 'Jewelry',
-        tags: tags || 'Procured,New Arrival',
-        quantity: item.quantity,
-        images: parsedImages,
-        commonImages: parsedCommonImages,
-        isFeatured: false,
-        variants: item.colorName
-          ? {
-              create: [
-                {
-                  colorName: item.colorName,
-                  colorCode: item.colorCode || '#0f388a',
-                  quantity: item.quantity,
-                  images: parsedImages,
-                },
-              ],
+    // Determine overall product images
+    let productImages = [];
+    if (Array.isArray(images) && images.length > 0) {
+      productImages = images;
+    } else if (commonImageArray.length > 0) {
+      productImages = commonImageArray;
+    } else if (variantList.length > 0) {
+      for (const v of variantList) {
+        const vImgs = Array.isArray(v.images) ? v.images : [];
+        if (vImgs.length > 0) {
+          productImages.push(vImgs[0]);
+          break;
+        }
+      }
+    }
+    if (productImages.length === 0) {
+      productImages = ['https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=80'];
+    }
+
+    // Total quantity
+    let totalQty = Number(body.quantity) || item.quantity;
+    if (variantList.length > 0) {
+      const sumVariantQty = variantList.reduce((acc, v) => acc + (Number(v.quantity) || 0), 0);
+      if (sumVariantQty > 0 || !body.quantity) {
+        totalQty = sumVariantQty;
+      }
+    }
+
+    const newProduct = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          name: productName,
+          slug: cleanSlug,
+          description: description || `Fine handcrafted ${(category || item.category || 'jewelry').toLowerCase()} sourced with genuine quality materials.`,
+          price: sellingPrice,
+          wholesaleCost: costPrice,
+          category: category || item.category || 'Rings',
+          tags: tags || 'Procured,New Arrival',
+          quantity: Math.max(0, totalQty),
+          images: JSON.stringify(productImages),
+          commonImages: JSON.stringify(commonImageArray),
+          isFeatured: false,
+        },
+      });
+
+      if (variantList.length > 0) {
+        for (const v of variantList) {
+          if (v.colorName && v.colorName.trim()) {
+            let vImgs = [];
+            if (Array.isArray(v.images)) {
+              vImgs = v.images;
+            } else if (typeof v.images === 'string') {
+              try {
+                vImgs = JSON.parse(v.images);
+              } catch (e) {
+                vImgs = [v.images];
+              }
             }
-          : undefined,
-      },
-      include: {
-        variants: true,
-      },
-    });
 
-    // Mark procurement item as enlisted
-    await prisma.procurementItem.update({
-      where: { id: procurementItemId },
-      data: {
-        isEnlisted: true,
-        productId: newProduct.id,
-        productVariantId: newProduct.variants && newProduct.variants.length > 0 ? newProduct.variants[0].id : null,
-      },
+            await tx.productVariant.create({
+              data: {
+                productId: created.id,
+                colorName: v.colorName.trim(),
+                colorCode: v.colorCode || null,
+                quantity: Math.max(0, Number(v.quantity) || 0),
+                images: JSON.stringify(vImgs),
+              },
+            });
+          }
+        }
+      }
+
+      await tx.procurementItem.update({
+        where: { id: procurementItemId },
+        data: {
+          isEnlisted: true,
+          productId: created.id,
+        },
+      });
+
+      return await tx.product.findUnique({
+        where: { id: created.id },
+        include: { variants: true },
+      });
     });
 
     return NextResponse.json({
       success: true,
-      message: `Enlisted "${newProduct.name}" successfully into catalog with auto-inherited wholesale cost ৳${item.unitPrice}!`,
+      message: `Enlisted "${newProduct.name}" successfully into catalog with wholesale cost ৳${costPrice}!`,
       product: newProduct,
     });
   } catch (error) {

@@ -13,6 +13,11 @@ import {
   ExternalLink,
   Trash2,
   Sparkles,
+  Upload,
+  X,
+  AlertCircle,
+  Palette,
+  Image as ImageIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -44,14 +49,19 @@ export default function AdminProcurementPage() {
   // Enlistment Modal state
   const [enlistingItem, setEnlistingItem] = useState(null);
   const [enlistType, setEnlistType] = useState('new'); // 'new' | 'restock'
+  const [enlistName, setEnlistName] = useState('');
+  const [enlistCategory, setEnlistCategory] = useState('Rings');
   const [enlistRetailPrice, setEnlistRetailPrice] = useState('');
+  const [enlistWholesaleCost, setEnlistWholesaleCost] = useState('');
+  const [enlistQuantity, setEnlistQuantity] = useState('');
   const [enlistDescription, setEnlistDescription] = useState('');
   const [enlistTags, setEnlistTags] = useState('Procured,New Arrival');
   const [enlistCommonImages, setEnlistCommonImages] = useState([]);
-  const [enlistVariantImages, setEnlistVariantImages] = useState([]);
+  const [enlistVariants, setEnlistVariants] = useState([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [enlistSelectedProductId, setEnlistSelectedProductId] = useState('');
   const [isSubmittingEnlist, setIsSubmittingEnlist] = useState(false);
+  const [enlistFormError, setEnlistFormError] = useState('');
 
   const fetchLogs = async () => {
     setIsLoading(true);
@@ -173,7 +183,7 @@ export default function AdminProcurementPage() {
       body: formData,
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to upload image');
+    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to upload image');
     return data.url;
   };
 
@@ -194,46 +204,139 @@ export default function AdminProcurementPage() {
     }
   };
 
-  const handleUploadVariantImage = async (file) => {
+  const handleAddCommonImageUrl = () => {
+    const url = prompt('Enter public URL for common image:');
+    if (url && url.trim()) {
+      if (enlistCommonImages.length >= 2) {
+        alert('Maximum 2 common images allowed.');
+        return;
+      }
+      setEnlistCommonImages((prev) => [...prev, url.trim()].slice(0, 2));
+    }
+  };
+
+  // Enlist Color Variant Helpers
+  const addEnlistVariant = () => {
+    setEnlistVariants((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substring(2, 9),
+        colorName: '',
+        colorCode: '#0f388a',
+        quantity: 5,
+        images: [],
+      },
+    ]);
+  };
+
+  const removeEnlistVariant = (index) => {
+    setEnlistVariants((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateEnlistVariantField = (index, field, value) => {
+    setEnlistVariants((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleEnlistVariantFileUpload = async (index, file) => {
     if (!file) return;
     setIsUploadingImage(true);
     try {
       const url = await uploadFile(file);
-      setEnlistVariantImages((prev) => [...prev, url]);
+      setEnlistVariants((prev) => {
+        const copy = [...prev];
+        const vImages = copy[index].images || [];
+        copy[index] = { ...copy[index], images: [...vImages, url] };
+        return copy;
+      });
     } catch (err) {
-      alert(err.message || 'Upload failed');
+      alert(err.message || 'Variant image upload failed');
     } finally {
       setIsUploadingImage(false);
     }
   };
 
+  const handleAddEnlistVariantImageUrl = (index) => {
+    const url = prompt('Enter image URL for this color variant:');
+    if (url && url.trim()) {
+      setEnlistVariants((prev) => {
+        const copy = [...prev];
+        const vImages = copy[index].images || [];
+        copy[index] = { ...copy[index], images: [...vImages, url.trim()] };
+        return copy;
+      });
+    }
+  };
+
+  const removeEnlistVariantImage = (variantIndex, imageIndex) => {
+    setEnlistVariants((prev) => {
+      const copy = [...prev];
+      copy[variantIndex].images = copy[variantIndex].images.filter((_, i) => i !== imageIndex);
+      return copy;
+    });
+  };
+
   // Open Enlist Modal
   const openEnlistModal = (item) => {
     setEnlistingItem(item);
-    setEnlistRetailPrice(String(item.unitPrice * 2)); // default 2x keystone markup
-    setEnlistDescription(`Fine handcrafted ${item.category.toLowerCase()} sourced with genuine quality materials.`);
+    setEnlistName(item.name || '');
+    setEnlistCategory(item.category || 'Rings');
+    setEnlistRetailPrice(String(item.unitPrice ? item.unitPrice * 2 : 1200));
+    setEnlistWholesaleCost(String(item.unitPrice || 0));
+    setEnlistQuantity(String(item.quantity || 10));
+    setEnlistDescription(`Fine handcrafted ${(item.category || 'jewelry').toLowerCase()} sourced with genuine quality materials.`);
     setEnlistTags('Procured,New Arrival,Handcrafted');
     setEnlistCommonImages([]);
-    setEnlistVariantImages([]);
+
+    // Initialize with item's color if present, else empty or 1 variant
+    if (item.colorName) {
+      setEnlistVariants([
+        {
+          id: Math.random().toString(36).substring(2, 9),
+          colorName: item.colorName,
+          colorCode: item.colorCode || '#0f388a',
+          quantity: item.quantity || 5,
+          images: [],
+        },
+      ]);
+    } else {
+      setEnlistVariants([]);
+    }
+
     setEnlistType('new');
     setEnlistSelectedProductId(existingProducts.length > 0 ? existingProducts[0].id : '');
+    setEnlistFormError('');
   };
 
   const handleEnlistSubmit = async () => {
     if (!enlistingItem) return;
+    setEnlistFormError('');
+
+    if (enlistType === 'new') {
+      if (!enlistName.trim() || enlistRetailPrice === '') {
+        setEnlistFormError('Product Name and Selling Price are required.');
+        return;
+      }
+    }
+
     setIsSubmittingEnlist(true);
 
     try {
       const payload = {
         procurementItemId: enlistingItem.id,
         existingProductId: enlistType === 'restock' ? enlistSelectedProductId : null,
-        retailPrice: Number(enlistRetailPrice) || enlistingItem.unitPrice * 2,
-        name: enlistingItem.name,
-        category: enlistingItem.category,
+        name: enlistName.trim(),
+        category: enlistCategory,
+        retailPrice: Number(enlistRetailPrice),
+        wholesaleCost: Number(enlistWholesaleCost) || enlistingItem.unitPrice,
+        quantity: Number(enlistQuantity) || enlistingItem.quantity,
         description: enlistDescription,
         tags: enlistTags,
         commonImages: enlistCommonImages,
-        images: enlistVariantImages.length > 0 ? enlistVariantImages : enlistCommonImages,
+        variants: enlistVariants,
       };
 
       const res = await fetch('/api/procurement/enlist', {
@@ -253,7 +356,7 @@ export default function AdminProcurementPage() {
       fetchLogs();
       fetchExistingProducts();
     } catch (err) {
-      alert(err.message || 'Error enlisting product');
+      setEnlistFormError(err.message || 'Error enlisting product');
     } finally {
       setIsSubmittingEnlist(false);
     }
@@ -678,238 +781,455 @@ export default function AdminProcurementPage() {
       {/* Enlistment Modal Dialog */}
       {enlistingItem && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="relative w-full max-w-lg bg-white border border-[#eae5de] rounded-xs shadow-2xl overflow-hidden p-6 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#eae5de]">
+          <div className="relative w-full max-w-3xl bg-white border border-[#eae5de] rounded-2xl shadow-2xl my-8 overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-[#e2edf8] bg-[#f8fbfe]">
               <div>
-                <span className="text-[10px] tracking-widest text-[#b88b42] uppercase font-semibold">
-                  Catalog Hand-Off
+                <span className="text-[10px] tracking-widest text-[#0f388a] uppercase font-semibold">
+                  Catalog Hand-Off & Enlistment
                 </span>
-                <h3 className="font-serif text-lg font-medium text-[#1c1a17]">
-                  Enlist "{enlistingItem.name}" to Catalog
+                <h3 className="font-serif text-lg font-semibold text-[#0d2342]">
+                  Enlist "{enlistingItem.name}" to Active Catalog
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setEnlistingItem(null)}
-                className="text-gray-400 hover:text-gray-700 text-sm"
+                className="p-1 text-gray-400 hover:text-gray-700"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Sourced Info Preview */}
-            <div className="p-3 bg-[#faf8f5] border border-[#eae5de] rounded-xs text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Auto-Inherited Wholesale Cost:</span>
+            {/* Sourced Info Preview Bar */}
+            <div className="px-6 py-3 bg-[#faf8f5] border-b border-[#eae5de] grid grid-cols-3 gap-3 text-xs">
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-semibold">Wholesale Unit Cost</span>
                 <span className="font-semibold text-[#0f388a]">৳{enlistingItem.unitPrice} / unit</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Procured Batch Stock:</span>
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-semibold">Procured Batch Stock</span>
                 <span className="font-semibold text-gray-900">{enlistingItem.quantity} units</span>
               </div>
-              {enlistingItem.colorName && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Color Variation:</span>
-                  <span className="font-semibold text-gray-900">{enlistingItem.colorName}</span>
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-semibold">Procurement Color</span>
+                <span className="font-semibold text-gray-900">{enlistingItem.colorName || 'Default'}</span>
+              </div>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleEnlistSubmit();
+              }}
+              className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto"
+            >
+              {enlistFormError && (
+                <div className="flex items-center gap-2 p-3 bg-rose-50 text-rose-700 rounded-lg border border-rose-200">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{enlistFormError}</span>
                 </div>
               )}
-            </div>
 
-            {/* Mode: New Product vs Restock */}
-            <div className="space-y-2 text-xs">
-              <label className="block text-[11px] uppercase tracking-wider font-semibold text-gray-900">
-                Action:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEnlistType('new')}
-                  className={`p-2.5 border text-center font-medium rounded-xs transition-colors ${
-                    enlistType === 'new'
-                      ? 'border-[#0f388a] bg-[#f0f6fd] text-[#0f388a] font-semibold'
-                      : 'border-[#eae5de] bg-white text-gray-700'
-                  }`}
-                >
-                  Create New Product
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEnlistType('restock')}
-                  className={`p-2.5 border text-center font-medium rounded-xs transition-colors ${
-                    enlistType === 'restock'
-                      ? 'border-[#0f388a] bg-[#f0f6fd] text-[#0f388a] font-semibold'
-                      : 'border-[#eae5de] bg-white text-gray-700'
-                  }`}
-                >
-                  Restock Existing Product
-                </button>
-              </div>
-            </div>
-
-            {enlistType === 'new' ? (
-              <div className="space-y-4 text-xs max-h-96 overflow-y-auto pr-1">
-                <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">
-                    Storefront Retail Selling Price (৳) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={enlistRetailPrice}
-                    onChange={(e) => setEnlistRetailPrice(e.target.value)}
-                    placeholder="Customer selling price..."
-                    className="w-full px-3 py-2 bg-[#faf8f5] border border-[#dcd5cb] text-sm font-semibold rounded-xs focus:outline-none focus:border-[#0f388a]"
-                  />
-                  <p className="text-[10px] text-gray-500 mt-0.5">
-                    Wholesale cost (৳{enlistingItem.unitPrice}) is auto-locked from procurement.
-                  </p>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">Product Description</label>
-                  <textarea
-                    rows={2}
-                    value={enlistDescription}
-                    onChange={(e) => setEnlistDescription(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-[#faf8f5] border border-[#dcd5cb] rounded-xs focus:outline-none"
-                  />
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">Tags (Comma-separated)</label>
-                  <input
-                    type="text"
-                    value={enlistTags}
-                    onChange={(e) => setEnlistTags(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-[#faf8f5] border border-[#dcd5cb] rounded-xs focus:outline-none"
-                  />
-                </div>
-
-                {/* 1. Common Images Upload (Max 2) */}
-                <div className="p-3 bg-[#f8fbfe] border border-[#e2edf8] rounded-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-gray-900 text-[11px]">
-                      Common Images (Max 2 across all variants):
-                    </span>
-                    <label className="cursor-pointer px-2.5 py-1 bg-white border border-[#d2e2f6] hover:border-[#0f388a] text-[10px] font-semibold text-[#0f388a] rounded-xs flex items-center gap-1">
-                      <Plus className="w-3 h-3" /> Upload Common
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isUploadingImage || enlistCommonImages.length >= 2}
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) handleUploadCommonImage(e.target.files[0]);
-                        }}
-                      />
-                    </label>
-                  </div>
-                  <div className="flex gap-2">
-                    {enlistCommonImages.map((img, i) => (
-                      <div key={i} className="relative w-14 h-14 rounded-xs border border-gray-300 overflow-hidden">
-                        <img src={img} alt="Common" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setEnlistCommonImages((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="absolute top-0 right-0 bg-rose-600 text-white w-4 h-4 text-[10px] flex items-center justify-center"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                    {enlistCommonImages.length === 0 && (
-                      <span className="text-[10px] text-gray-400 italic">No common images uploaded yet.</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* 2. Color Variant-Specific Images Upload */}
-                <div className="p-3 bg-[#fbf8f1] border border-[#ebdcc7] rounded-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-gray-900 text-[11px]">
-                      {enlistingItem.colorName ? `${enlistingItem.colorName} Specific Images:` : 'Variant Images:'}
-                    </span>
-                    <label className="cursor-pointer px-2.5 py-1 bg-white border border-[#ebdcc7] hover:border-[#b88b42] text-[10px] font-semibold text-[#b88b42] rounded-xs flex items-center gap-1">
-                      <Plus className="w-3 h-3" /> Upload Variant Pic
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isUploadingImage}
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) handleUploadVariantImage(e.target.files[0]);
-                        }}
-                      />
-                    </label>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {enlistVariantImages.map((img, i) => (
-                      <div key={i} className="relative w-14 h-14 rounded-xs border border-gray-300 overflow-hidden">
-                        <img src={img} alt="Variant" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setEnlistVariantImages((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="absolute top-0 right-0 bg-rose-600 text-white w-4 h-4 text-[10px] flex items-center justify-center"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                    {enlistVariantImages.length === 0 && (
-                      <span className="text-[10px] text-gray-400 italic">No variant images uploaded yet.</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-[11px] text-[#6b665f] mb-1">
-                    Select Existing Product to Restock (+{enlistingItem.quantity} units) *
-                  </label>
-                  <select
-                    value={enlistSelectedProductId}
-                    onChange={(e) => setEnlistSelectedProductId(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#faf8f5] border border-[#dcd5cb] rounded-xs focus:outline-none"
+              {/* Mode: New Product vs Restock */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342]">
+                  Enlistment Strategy
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEnlistType('new')}
+                    className={`p-3 border rounded-xl text-center font-medium transition-colors ${
+                      enlistType === 'new'
+                        ? 'border-[#0f388a] bg-[#f0f6fd] text-[#0f388a] font-semibold shadow-xs'
+                        : 'border-[#eae5de] bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
-                    {existingProducts.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.quantity} current stock)
-                      </option>
-                    ))}
-                  </select>
+                    ✨ Create New Catalog Product
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEnlistType('restock')}
+                    className={`p-3 border rounded-xl text-center font-medium transition-colors ${
+                      enlistType === 'restock'
+                        ? 'border-[#0f388a] bg-[#f0f6fd] text-[#0f388a] font-semibold shadow-xs'
+                        : 'border-[#eae5de] bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    📦 Restock Existing Product
+                  </button>
                 </div>
               </div>
-            )}
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-3 border-t border-[#eae5de]">
-              <button
-                type="button"
-                onClick={() => setEnlistingItem(null)}
-                disabled={isSubmittingEnlist}
-                className="px-4 py-2 border border-[#dcd5cb] text-xs font-medium text-gray-700 hover:bg-[#faf8f5] rounded-xs"
-              >
-                Cancel
-              </button>
+              {enlistType === 'new' ? (
+                <>
+                  {/* Name & Category */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342] mb-1">
+                        Product Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={enlistName}
+                        onChange={(e) => setEnlistName(e.target.value)}
+                        placeholder="e.g. Ocean Blue Sapphire Pendant"
+                        className="w-full px-3 py-2 border border-[#d2e2f6] rounded-lg focus:outline-none focus:border-[#0f388a]"
+                      />
+                    </div>
 
-              <button
-                type="button"
-                onClick={handleEnlistSubmit}
-                disabled={isSubmittingEnlist}
-                className="px-5 py-2 bg-[#0f388a] text-white text-xs uppercase tracking-wider font-semibold hover:bg-[#0a2561] rounded-xs transition-colors flex items-center gap-1.5 shadow-xs"
-              >
-                {isSubmittingEnlist ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Enlisting...
-                  </>
-                ) : (
-                  'Confirm & Enlist'
-                )}
-              </button>
-            </div>
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342] mb-1">
+                        Jewelry Category *
+                      </label>
+                      <select
+                        value={enlistCategory}
+                        onChange={(e) => setEnlistCategory(e.target.value)}
+                        className="w-full px-3 py-2 border border-[#d2e2f6] rounded-lg focus:outline-none focus:border-[#0f388a]"
+                      >
+                        <option value="Rings">Rings</option>
+                        <option value="Necklaces">Necklaces</option>
+                        <option value="Earrings">Earrings</option>
+                        <option value="Bracelets">Bracelets</option>
+                        <option value="Pearls">Pearls</option>
+                        <option value="Gifting">Gifting</option>
+                        <option value="Bespoke">Bespoke</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Pricing & Stock */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342] mb-1">
+                        Retail Selling Price (৳) *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        value={enlistRetailPrice}
+                        onChange={(e) => setEnlistRetailPrice(e.target.value)}
+                        placeholder="1250"
+                        className="w-full px-3 py-2 border border-[#d2e2f6] rounded-lg focus:outline-none focus:border-[#0f388a] font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342] mb-1">
+                        Wholesale Cost (৳)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={enlistWholesaleCost}
+                        onChange={(e) => setEnlistWholesaleCost(e.target.value)}
+                        placeholder="500"
+                        className="w-full px-3 py-2 bg-gray-50 border border-[#d2e2f6] rounded-lg focus:outline-none font-semibold text-[#0f388a]"
+                      />
+                      <span className="text-[10px] text-gray-500">Auto-filled from sourcing unit price</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342] mb-1">
+                        Total Stock Quantity
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={enlistQuantity}
+                        onChange={(e) => setEnlistQuantity(e.target.value)}
+                        placeholder="25"
+                        className="w-full px-3 py-2 border border-[#d2e2f6] rounded-lg focus:outline-none focus:border-[#0f388a]"
+                      />
+                      <span className="text-[10px] text-gray-500">Auto-sums from color variants if added</span>
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342] mb-1">
+                      Tags (Comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={enlistTags}
+                      onChange={(e) => setEnlistTags(e.target.value)}
+                      placeholder="Ocean, Sapphire, Best Seller, New"
+                      className="w-full px-3 py-2 border border-[#d2e2f6] rounded-lg focus:outline-none focus:border-[#0f388a]"
+                    />
+                  </div>
+
+                  {/* SECTION 1: Common Images (Max 2) */}
+                  <div className="space-y-3 p-4 bg-[#f8fbfe] border border-[#e2edf8] rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-xs uppercase tracking-wider font-semibold text-[#0d2342] flex items-center gap-1.5">
+                          <ImageIcon className="w-4 h-4 text-[#0f388a]" />
+                          Common Master Images ({enlistCommonImages.length}/2 Max)
+                        </label>
+                        <p className="text-[11px] text-[#6e85a0]">
+                          Upload up to 2 common master images shared across all color variations.
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAddCommonImageUrl}
+                          disabled={enlistCommonImages.length >= 2}
+                          className="px-2.5 py-1 text-[11px] bg-white border border-[#d2e2f6] hover:bg-gray-50 rounded-lg text-[#0f388a] font-medium"
+                        >
+                          + Image URL
+                        </button>
+                        <label
+                          className={`px-3 py-1 text-[11px] bg-[#0f388a] text-white rounded-lg cursor-pointer hover:bg-[#0a2561] flex items-center gap-1 font-medium ${
+                            enlistCommonImages.length >= 2 || isUploadingImage ? 'opacity-50 pointer-events-none' : ''
+                          }`}
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{isUploadingImage ? 'Uploading...' : 'Upload'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) handleUploadCommonImage(e.target.files[0]);
+                            }}
+                            disabled={enlistCommonImages.length >= 2 || isUploadingImage}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      {enlistCommonImages.map((img, idx) => (
+                        <div key={idx} className="relative aspect-video border border-[#d2e2f6] rounded-lg overflow-hidden bg-white">
+                          <img src={img} alt={`Common ${idx + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setEnlistCommonImages((prev) => prev.filter((_, i) => i !== idx))}
+                            className="absolute top-1.5 right-1.5 p-1 bg-black/70 text-white rounded-full hover:bg-rose-600 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 bg-black/60 text-white text-[9px] rounded font-medium">
+                            Common Image {idx + 1}
+                          </span>
+                        </div>
+                      ))}
+                      {enlistCommonImages.length === 0 && (
+                        <div className="col-span-2 text-center py-4 text-gray-400 border border-dashed border-[#d2e2f6] rounded-lg text-xs">
+                          No common images added yet (optional).
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: Color Variations */}
+                  <div className="space-y-4 p-4 bg-white border border-[#e2edf8] rounded-xl shadow-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#edf4fc]">
+                      <div>
+                        <h3 className="font-serif text-sm font-semibold text-[#0d2342] flex items-center gap-1.5">
+                          <Palette className="w-4 h-4 text-[#0f388a]" />
+                          Color Variations & Variant-Specific Images
+                        </h3>
+                        <p className="text-[11px] text-[#6e85a0]">
+                          Enlist as many color variations as needed. Each variant has its own quantity and images.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addEnlistVariant}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#f0f6fd] border border-[#d2e2f6] text-[#0f388a] hover:bg-[#e0edfb] font-semibold text-xs rounded-lg transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Color Variant
+                      </button>
+                    </div>
+
+                    {enlistVariants.length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 border border-dashed border-[#d2e2f6] rounded-lg">
+                        No color variations configured yet. If this jewelry piece comes in multiple colors (e.g. Ocean Blue, Emerald Green, Rose Gold), click "Add Color Variant".
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {enlistVariants.map((v, vIdx) => (
+                          <div key={v.id || vIdx} className="p-4 bg-[#f8fbfe] border border-[#d2e2f6] rounded-xl space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-xs text-[#0f388a]">
+                                Variant #{vIdx + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeEnlistVariant(vIdx)}
+                                className="text-rose-600 hover:text-rose-800 flex items-center gap-1 text-[11px]"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Remove
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-[10px] uppercase font-semibold text-[#0d2342] mb-1">
+                                  Color Name *
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={v.colorName}
+                                  onChange={(e) => updateEnlistVariantField(vIdx, 'colorName', e.target.value)}
+                                  placeholder="e.g. Sapphire Blue"
+                                  className="w-full px-2.5 py-1.5 border border-[#d2e2f6] rounded-lg bg-white focus:outline-none focus:border-[#0f388a]"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] uppercase font-semibold text-[#0d2342] mb-1">
+                                  Color Picker (Optional)
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={v.colorCode || '#0f388a'}
+                                    onChange={(e) => updateEnlistVariantField(vIdx, 'colorCode', e.target.value)}
+                                    className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={v.colorCode || ''}
+                                    onChange={(e) => updateEnlistVariantField(vIdx, 'colorCode', e.target.value)}
+                                    placeholder="#0f388a"
+                                    className="w-full px-2 py-1.5 border border-[#d2e2f6] rounded-lg bg-white text-xs font-mono"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] uppercase font-semibold text-[#0d2342] mb-1">
+                                  Variant Stock Quantity *
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  required
+                                  value={v.quantity}
+                                  onChange={(e) => updateEnlistVariantField(vIdx, 'quantity', e.target.value)}
+                                  className="w-full px-2.5 py-1.5 border border-[#d2e2f6] rounded-lg bg-white focus:outline-none focus:border-[#0f388a]"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Images for this specific variant */}
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="text-[10px] uppercase font-semibold text-[#0d2342]">
+                                  Variant Images ({v.images?.length || 0})
+                                </label>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddEnlistVariantImageUrl(vIdx)}
+                                    className="px-2 py-0.5 text-[10px] bg-white border border-[#d2e2f6] rounded hover:bg-gray-50 text-[#0f388a]"
+                                  >
+                                    + URL
+                                  </button>
+                                  <label className="px-2 py-0.5 text-[10px] bg-[#0f388a] text-white rounded cursor-pointer hover:bg-[#0a2561] flex items-center gap-1">
+                                    <Upload className="w-3 h-3" />
+                                    <span>Upload</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => handleEnlistVariantFileUpload(vIdx, e.target.files?.[0])}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2 flex-wrap">
+                                {(v.images || []).map((vImg, imgI) => (
+                                  <div key={imgI} className="relative w-16 h-16 rounded border border-[#d2e2f6] overflow-hidden bg-white">
+                                    <img src={vImg} alt="variant" className="w-full h-full object-cover" />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeEnlistVariantImage(vIdx, imgI)}
+                                      className="absolute top-0.5 right-0.5 p-0.5 bg-black/70 text-white rounded-full hover:bg-rose-600"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342] mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={enlistDescription}
+                      onChange={(e) => setEnlistDescription(e.target.value)}
+                      placeholder="Artisanal description of this piece..."
+                      className="w-full px-3 py-2 border border-[#d2e2f6] rounded-lg focus:outline-none focus:border-[#0f388a]"
+                    />
+                  </div>
+                </>
+              ) : (
+                /* Restock existing */
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#0d2342] mb-1">
+                      Select Existing Product to Restock (+{enlistingItem.quantity} units) *
+                    </label>
+                    <select
+                      value={enlistSelectedProductId}
+                      onChange={(e) => setEnlistSelectedProductId(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-[#d2e2f6] rounded-lg focus:outline-none"
+                    >
+                      {existingProducts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.quantity} current stock)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#edf4fc]">
+                <button
+                  type="button"
+                  onClick={() => setEnlistingItem(null)}
+                  disabled={isSubmittingEnlist}
+                  className="px-4 py-2 border border-[#d2e2f6] text-xs uppercase tracking-wider text-gray-600 hover:bg-gray-50 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingEnlist}
+                  className="px-6 py-2 bg-[#0f388a] text-white text-xs uppercase tracking-widest font-semibold hover:bg-[#0a2561] transition-colors rounded-lg shadow-md disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSubmittingEnlist ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Enlisting...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-3.5 h-3.5" /> Confirm & Enlist to Catalog
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
