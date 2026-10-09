@@ -45,6 +45,11 @@ export default function AdminProcurementPage() {
   const [enlistingItem, setEnlistingItem] = useState(null);
   const [enlistType, setEnlistType] = useState('new'); // 'new' | 'restock'
   const [enlistRetailPrice, setEnlistRetailPrice] = useState('');
+  const [enlistDescription, setEnlistDescription] = useState('');
+  const [enlistTags, setEnlistTags] = useState('Procured,New Arrival');
+  const [enlistCommonImages, setEnlistCommonImages] = useState([]);
+  const [enlistVariantImages, setEnlistVariantImages] = useState([]);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [enlistSelectedProductId, setEnlistSelectedProductId] = useState('');
   const [isSubmittingEnlist, setIsSubmittingEnlist] = useState(false);
 
@@ -160,10 +165,56 @@ export default function AdminProcurementPage() {
     }
   };
 
+  const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to upload image');
+    return data.url;
+  };
+
+  const handleUploadCommonImage = async (file) => {
+    if (!file) return;
+    if (enlistCommonImages.length >= 2) {
+      alert('Maximum 2 common images allowed.');
+      return;
+    }
+    setIsUploadingImage(true);
+    try {
+      const url = await uploadFile(file);
+      setEnlistCommonImages((prev) => [...prev, url].slice(0, 2));
+    } catch (err) {
+      alert(err.message || 'Upload failed');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleUploadVariantImage = async (file) => {
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const url = await uploadFile(file);
+      setEnlistVariantImages((prev) => [...prev, url]);
+    } catch (err) {
+      alert(err.message || 'Upload failed');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   // Open Enlist Modal
   const openEnlistModal = (item) => {
     setEnlistingItem(item);
     setEnlistRetailPrice(String(item.unitPrice * 2)); // default 2x keystone markup
+    setEnlistDescription(`Fine handcrafted ${item.category.toLowerCase()} sourced with genuine quality materials.`);
+    setEnlistTags('Procured,New Arrival,Handcrafted');
+    setEnlistCommonImages([]);
+    setEnlistVariantImages([]);
     setEnlistType('new');
     setEnlistSelectedProductId(existingProducts.length > 0 ? existingProducts[0].id : '');
   };
@@ -179,6 +230,10 @@ export default function AdminProcurementPage() {
         retailPrice: Number(enlistRetailPrice) || enlistingItem.unitPrice * 2,
         name: enlistingItem.name,
         category: enlistingItem.category,
+        description: enlistDescription,
+        tags: enlistTags,
+        commonImages: enlistCommonImages,
+        images: enlistVariantImages.length > 0 ? enlistVariantImages : enlistCommonImages,
       };
 
       const res = await fetch('/api/procurement/enlist', {
@@ -692,7 +747,7 @@ export default function AdminProcurementPage() {
             </div>
 
             {enlistType === 'new' ? (
-              <div className="space-y-3 text-xs">
+              <div className="space-y-4 text-xs max-h-96 overflow-y-auto pr-1">
                 <div>
                   <label className="block text-[11px] text-[#6b665f] mb-1">
                     Storefront Retail Selling Price (৳) *
@@ -705,9 +760,107 @@ export default function AdminProcurementPage() {
                     placeholder="Customer selling price..."
                     className="w-full px-3 py-2 bg-[#faf8f5] border border-[#dcd5cb] text-sm font-semibold rounded-xs focus:outline-none focus:border-[#0f388a]"
                   />
-                  <p className="text-[10px] text-gray-500 mt-1">
+                  <p className="text-[10px] text-gray-500 mt-0.5">
                     Wholesale cost (৳{enlistingItem.unitPrice}) is auto-locked from procurement.
                   </p>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-[11px] text-[#6b665f] mb-1">Product Description</label>
+                  <textarea
+                    rows={2}
+                    value={enlistDescription}
+                    onChange={(e) => setEnlistDescription(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-[#faf8f5] border border-[#dcd5cb] rounded-xs focus:outline-none"
+                  />
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <label className="block text-[11px] text-[#6b665f] mb-1">Tags (Comma-separated)</label>
+                  <input
+                    type="text"
+                    value={enlistTags}
+                    onChange={(e) => setEnlistTags(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-[#faf8f5] border border-[#dcd5cb] rounded-xs focus:outline-none"
+                  />
+                </div>
+
+                {/* 1. Common Images Upload (Max 2) */}
+                <div className="p-3 bg-[#f8fbfe] border border-[#e2edf8] rounded-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-900 text-[11px]">
+                      Common Images (Max 2 across all variants):
+                    </span>
+                    <label className="cursor-pointer px-2.5 py-1 bg-white border border-[#d2e2f6] hover:border-[#0f388a] text-[10px] font-semibold text-[#0f388a] rounded-xs flex items-center gap-1">
+                      <Plus className="w-3 h-3" /> Upload Common
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={isUploadingImage || enlistCommonImages.length >= 2}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) handleUploadCommonImage(e.target.files[0]);
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex gap-2">
+                    {enlistCommonImages.map((img, i) => (
+                      <div key={i} className="relative w-14 h-14 rounded-xs border border-gray-300 overflow-hidden">
+                        <img src={img} alt="Common" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setEnlistCommonImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-0 right-0 bg-rose-600 text-white w-4 h-4 text-[10px] flex items-center justify-center"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    {enlistCommonImages.length === 0 && (
+                      <span className="text-[10px] text-gray-400 italic">No common images uploaded yet.</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Color Variant-Specific Images Upload */}
+                <div className="p-3 bg-[#fbf8f1] border border-[#ebdcc7] rounded-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-900 text-[11px]">
+                      {enlistingItem.colorName ? `${enlistingItem.colorName} Specific Images:` : 'Variant Images:'}
+                    </span>
+                    <label className="cursor-pointer px-2.5 py-1 bg-white border border-[#ebdcc7] hover:border-[#b88b42] text-[10px] font-semibold text-[#b88b42] rounded-xs flex items-center gap-1">
+                      <Plus className="w-3 h-3" /> Upload Variant Pic
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={isUploadingImage}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) handleUploadVariantImage(e.target.files[0]);
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {enlistVariantImages.map((img, i) => (
+                      <div key={i} className="relative w-14 h-14 rounded-xs border border-gray-300 overflow-hidden">
+                        <img src={img} alt="Variant" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setEnlistVariantImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-0 right-0 bg-rose-600 text-white w-4 h-4 text-[10px] flex items-center justify-center"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    {enlistVariantImages.length === 0 && (
+                      <span className="text-[10px] text-gray-400 italic">No variant images uploaded yet.</span>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (

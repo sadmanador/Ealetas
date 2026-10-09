@@ -307,19 +307,18 @@ export default function AdminProductsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#eae5de]">
         <div>
           <span className="text-[10px] tracking-widest text-[#0f388a] uppercase font-semibold">
-            Catalog & Variations
+            Catalog & Live Inventory
           </span>
           <h1 className="font-serif text-2xl sm:text-3xl font-medium text-[#0d2342]">
-            Jewelry Products & Stock
+            Jewelry Products & Active Inventory
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={openCreateModal}
+        <Link
+          href="/admin/procurement"
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0f388a] text-white text-xs uppercase tracking-widest font-semibold hover:bg-[#0a2561] transition-colors rounded-lg shadow-md"
         >
-          <Plus className="w-4 h-4" /> Enlist New Piece
-        </button>
+          <Plus className="w-4 h-4" /> Enlist in Procurement
+        </Link>
       </div>
 
       {/* Filter Toolbar */}
@@ -557,12 +556,12 @@ export default function AdminProductsPage() {
                   <input
                     type="number"
                     min="0"
+                    readOnly
                     value={wholesaleCost}
-                    onChange={(e) => setWholesaleCost(e.target.value)}
-                    placeholder="650"
-                    className="w-full px-3 py-2 border border-[#d2e2f6] rounded-lg focus:outline-none focus:border-[#0f388a]"
+                    placeholder="Locked from procurement"
+                    className="w-full px-3 py-2 bg-gray-100 text-gray-600 border border-[#d2e2f6] rounded-lg focus:outline-none cursor-not-allowed font-semibold"
                   />
-                  <span className="text-[10px] text-gray-500">Unit procurement cost</span>
+                  <span className="text-[10px] text-gray-500">Auto-inherited from Procurement sourcing trip</span>
                 </div>
 
                 <div>

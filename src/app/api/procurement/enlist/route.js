@@ -110,7 +110,7 @@ export async function POST(request) {
         price: sellingPrice,
         wholesaleCost: item.unitPrice, // AUTO-INHERITED from procurement!
         category: category || item.category || 'Jewelry',
-        tags: 'Procured,New Arrival',
+        tags: tags || 'Procured,New Arrival',
         quantity: item.quantity,
         images: parsedImages,
         commonImages: parsedCommonImages,
