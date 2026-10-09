@@ -70,16 +70,18 @@ export default function AdminOrdersPage() {
   }, []);
 
   const openPackagingModal = (order) => {
+    if (!order) return;
     setPackagingModalOrder(order);
     // Initialize item adjustments with current quantities
+    const safeItems = Array.isArray(order.items) ? order.items : [];
     setItemAdjustments(
-      order.items.map((i) => ({
+      safeItems.map((i) => ({
         orderItemId: i.id,
-        productName: i.productName,
-        colorVariantName: i.colorVariantName,
-        originalQty: i.quantity,
-        quantity: i.quantity,
-        wholesaleCost: i.wholesaleCost || 0,
+        productName: i.productName || 'Product',
+        colorVariantName: i.colorVariantName || null,
+        originalQty: Number(i.quantity) || 1,
+        quantity: Number(i.quantity) || 1,
+        wholesaleCost: Number(i.wholesaleCost) || 0,
       }))
     );
     setSelectedPackaging([]);
@@ -222,12 +224,14 @@ export default function AdminOrdersPage() {
   // Helper to compute orders & product quantities for each status
   const getStatusStats = (statusKey) => {
     const matching = statusKey === 'all'
-      ? allOrders
-      : allOrders.filter((o) => o.status === statusKey);
+      ? (allOrders || [])
+      : (allOrders || []).filter((o) => o?.status === statusKey);
 
     const totalOrdersCount = matching.length;
     const totalItemsCount = matching.reduce((sum, o) => {
-      const itemsInOrder = o.items ? o.items.reduce((s, i) => s + (i.quantity || 1), 0) : 0;
+      const itemsInOrder = Array.isArray(o?.items)
+        ? o.items.reduce((s, i) => s + (Number(i?.quantity) || 1), 0)
+        : 0;
       return sum + itemsInOrder;
     }, 0);
 
@@ -246,14 +250,21 @@ export default function AdminOrdersPage() {
     { key: 'cancelled', label: 'Cancelled', icon: XCircle, bg: 'hover:border-gray-500' },
   ];
 
-  const filtered = allOrders.filter((o) => {
+  const filtered = (allOrders || []).filter((o) => {
+    if (!o) return false;
     const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
-    const q = search.toLowerCase();
+    const q = (search || '').toLowerCase();
+    const orderNum = (o.orderNumber || '').toLowerCase();
+    const custName = (o.customerName || '').toLowerCase();
+    const custPhone = (o.customerPhone || '');
+    const addr = (o.deliveryAddress || '').toLowerCase();
+
     const matchesSearch =
-      o.orderNumber.toLowerCase().includes(q) ||
-      o.customerName.toLowerCase().includes(q) ||
-      o.customerPhone.includes(q) ||
-      o.deliveryAddress.toLowerCase().includes(q);
+      orderNum.includes(q) ||
+      custName.includes(q) ||
+      custPhone.includes(q) ||
+      addr.includes(q);
+
     return matchesStatus && matchesSearch;
   });
 
@@ -382,16 +393,18 @@ export default function AdminOrdersPage() {
                     <tr key={order.id} className="hover:bg-[#faf8f5]/50 transition-colors align-top">
                       <td className="p-3.5 space-y-1">
                         <span className="font-semibold text-gray-900 block font-mono">
-                          #{order.orderNumber}
+                          #{order.orderNumber || 'N/A'}
                         </span>
                         <span className="text-[11px] text-gray-500 block">
-                          {new Date(order.createdAt).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          {order.createdAt
+                            ? new Date(order.createdAt).toLocaleDateString('en-GB', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '—'}
                         </span>
                         {order.inventoryAdjusted && (
                           <span className="inline-block px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200 rounded-xs">
@@ -401,13 +414,15 @@ export default function AdminOrdersPage() {
                       </td>
 
                       <td className="p-3.5 space-y-1">
-                        <span className="font-medium text-gray-900 block">{order.customerName}</span>
-                        <div className="flex items-center gap-1 text-[11px] text-[#b88b42]">
-                          <Phone className="w-3 h-3" />
-                          <a href={`tel:${order.customerPhone}`} className="hover:underline">
-                            {order.customerPhone}
-                          </a>
-                        </div>
+                        <span className="font-medium text-gray-900 block">{order.customerName || 'Anonymous'}</span>
+                        {order.customerPhone && (
+                          <div className="flex items-center gap-1 text-[11px] text-[#b88b42]">
+                            <Phone className="w-3 h-3" />
+                            <a href={`tel:${order.customerPhone}`} className="hover:underline">
+                              {order.customerPhone}
+                            </a>
+                          </div>
+                        )}
                       </td>
 
                       <td className="p-3.5 max-w-xs space-y-1">
@@ -421,7 +436,7 @@ export default function AdminOrdersPage() {
                           {order.isDhakaCityCorp ? 'Inside Dhaka City (80৳)' : 'Outside Dhaka (120৳)'}
                         </span>
                         <p className="text-[11px] text-gray-600 leading-snug line-clamp-2">
-                          {order.deliveryAddress}
+                          {order.deliveryAddress || 'No address provided'}
                         </p>
                         {order.notes && (
                           <p className="text-[10px] text-gray-400 italic">Note: {order.notes}</p>
@@ -429,22 +444,27 @@ export default function AdminOrdersPage() {
                       </td>
 
                       <td className="p-3.5 space-y-1">
-                        {order.items?.map((item) => (
-                          <div key={item.id} className="text-[11px] text-gray-700">
-                            • {item.productName} <span className="font-semibold text-gray-900">×{item.quantity}</span>
-                          </div>
-                        ))}
+                        {Array.isArray(order.items) &&
+                          order.items.map((item) => (
+                            <div key={item.id} className="text-[11px] text-gray-700">
+                              • {item.productName || 'Product'}{' '}
+                              {item.colorVariantName && (
+                                <span className="text-[#0f388a]">({item.colorVariantName})</span>
+                              )}{' '}
+                              <span className="font-semibold text-gray-900">×{item.quantity}</span>
+                            </div>
+                          ))}
                       </td>
 
                       <td className="p-3.5 font-semibold text-gray-900">
-                        ৳{order.totalAmount?.toLocaleString()}
+                        ৳{Number(order.totalAmount || 0).toLocaleString()}
                         <div className="text-[10px] text-gray-400 font-normal">
-                          (incl. ৳{order.deliveryCharge} delivery)
+                          (incl. ৳{Number(order.deliveryCharge || 0)} delivery)
                         </div>
-                        {order.totalCost > 0 && (
+                        {Number(order.totalCost || 0) > 0 && (
                           <div className="mt-1.5 pt-1 border-t border-[#f0ece5] text-[10px] text-[#0f388a] font-normal">
-                            Cost: <strong>৳{order.totalCost.toLocaleString()}</strong>
-                            {order.packagingItems && order.packagingItems.length > 0 && (
+                            Cost: <strong>৳{Number(order.totalCost).toLocaleString()}</strong>
+                            {Array.isArray(order.packagingItems) && order.packagingItems.length > 0 && (
                               <span className="block text-gray-500">
                                 ({order.packagingItems.length} packaging attached)
                               </span>
@@ -460,7 +480,7 @@ export default function AdminOrdersPage() {
                               STATUS_OPTIONS.find((s) => s.value === order.status)?.color || 'bg-gray-100 text-gray-700'
                             }`}
                           >
-                            {order.status.replace('_', ' ')}
+                            {(order.status || 'pending').replace('_', ' ')}
                           </span>
 
                           {/* Strict Transition Action Buttons */}
