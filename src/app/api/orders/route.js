@@ -74,6 +74,8 @@ export async function POST(request) {
 
       orderItemsData.push({
         productId: product.id,
+        productVariantId: item.productVariantId || null,
+        colorVariantName: item.colorVariantName || null,
         productName: product.name,
         productImage: firstImg,
         price: itemPrice,
@@ -84,11 +86,18 @@ export async function POST(request) {
 
     const totalAmount = subtotal + deliveryCharge;
 
-    // 3. Upsert Customer Record
+    // 3. Check customer blacklist and Upsert Customer Record
     const cleanPhone = phone.trim();
     let customer = await prisma.customer.findUnique({
       where: { phone: cleanPhone },
     });
+
+    if (customer && customer.isBlacklisted) {
+      return NextResponse.json(
+        { error: 'This phone number is restricted from placing orders. Please contact customer service.' },
+        { status: 403 }
+      );
+    }
 
     if (customer) {
       customer = await prisma.customer.update({
@@ -206,6 +215,9 @@ export async function GET(request) {
       include: {
         items: true,
         customer: true,
+        packagingItems: {
+          include: { packagingItem: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

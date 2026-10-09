@@ -17,6 +17,8 @@ import {
   LogOut,
   ExternalLink,
   PhoneCall,
+  FileText,
+  HelpCircle,
 } from 'lucide-react';
 
 export default function AdminSidebar({ session }) {
@@ -33,9 +35,11 @@ export default function AdminSidebar({ session }) {
     { name: 'Orders & Logistics', href: '/admin/orders', icon: PackageCheck },
     { name: 'Packaging Items', href: '/admin/packaging', icon: Boxes },
     { name: 'Customer Directory', href: '/admin/customers', icon: Users },
+    { name: 'CMS Pages (TipTap)', href: '/admin/pages', icon: FileText },
+    { name: 'Home FAQs', href: '/admin/faqs', icon: HelpCircle },
     { name: 'Procure Travel Cost', href: '/admin/procurement', icon: Compass },
     { name: 'Page Analytics', href: '/admin/analytics', icon: BarChart3 },
-    { name: 'Delivery Settings', href: '/admin/settings', icon: Settings },
+    { name: 'Store & Notice Settings', href: '/admin/settings', icon: Settings },
     { name: 'My Profile & SMS', href: '/admin/profile', icon: UserCog },
   ];
 

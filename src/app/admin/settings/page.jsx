@@ -7,6 +7,8 @@ export default function AdminSettingsPage() {
   const [insideCharge, setInsideCharge] = useState(80);
   const [outsideCharge, setOutsideCharge] = useState(120);
   const [smsAlertsEnabled, setSmsAlertsEnabled] = useState(true);
+  const [noticeBannerText, setNoticeBannerText] = useState('Timeless Beauty Inspired by the Treasures of the Sea ✦ Fast & Insured Delivery across Bangladesh (Dhaka ৳80 | Nationwide ৳120)');
+  const [noticeBannerEnabled, setNoticeBannerEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState('');
@@ -23,6 +25,12 @@ export default function AdminSettingsPage() {
         }
         if (data.smsAlertsEnabled !== undefined) {
           setSmsAlertsEnabled(data.smsAlertsEnabled);
+        }
+        if (data.noticeBannerText !== undefined) {
+          setNoticeBannerText(data.noticeBannerText);
+        }
+        if (data.noticeBannerEnabled !== undefined) {
+          setNoticeBannerEnabled(data.noticeBannerEnabled);
         }
       })
       .finally(() => setIsLoading(false));
@@ -41,12 +49,14 @@ export default function AdminSettingsPage() {
           insideDhakaDeliveryCharge: Number(insideCharge),
           outsideDhakaDeliveryCharge: Number(outsideCharge),
           smsAlertsEnabled,
+          noticeBannerText,
+          noticeBannerEnabled,
         }),
       });
 
       if (!res.ok) throw new Error('Failed to update settings');
 
-      setSavedNotice('✓ Delivery charges updated successfully!');
+      setSavedNotice('✓ Store settings & notice banner updated successfully!');
       setTimeout(() => setSavedNotice(''), 3000);
     } catch (err) {
       alert(err.message || 'Error saving settings');
@@ -152,11 +162,50 @@ export default function AdminSettingsPage() {
             </label>
           </div>
 
+          {/* Top Marquee Notice Banner Section */}
+          <div className="space-y-4 pt-4 border-t border-[#f0ece5]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#f0ece5]">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-[#0f388a]" />
+                <h2 className="font-serif text-base font-medium text-[#1c1a17]">
+                  Top Marquee Notice Banner
+                </h2>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={noticeBannerEnabled}
+                  onChange={(e) => setNoticeBannerEnabled(e.target.checked)}
+                  className="w-4 h-4 accent-[#0f388a]"
+                />
+                <span className="text-xs font-semibold text-[#0d2342]">
+                  {noticeBannerEnabled ? 'Banner Enabled' : 'Banner Disabled'}
+                </span>
+              </label>
+            </div>
+            <p className="text-gray-500 text-[11px] leading-relaxed">
+              When enabled, this announcement continuously loops across the very top of the storefront as a smooth marquee.
+            </p>
+
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-[#1c1a17] mb-1">
+                Announcement Text *
+              </label>
+              <textarea
+                rows={2}
+                value={noticeBannerText}
+                onChange={(e) => setNoticeBannerText(e.target.value)}
+                placeholder="e.g. Special Eid Collection Launch! Insured nationwide delivery..."
+                className="w-full px-3 py-2 bg-[#faf8f5] border border-[#dcd5cb] text-xs rounded-xs focus:outline-none focus:border-[#0f388a]"
+              />
+            </div>
+          </div>
+
           <div className="pt-4 border-t border-[#eae5de] flex justify-end">
             <button
               type="submit"
               disabled={isSaving}
-              className="px-6 py-2.5 bg-[#1c1a17] text-white uppercase tracking-widest font-medium text-xs hover:bg-[#b88b42] transition-colors rounded-xs shadow-xs flex items-center gap-2"
+              className="px-6 py-2.5 bg-[#0f388a] text-white uppercase tracking-widest font-medium text-xs hover:bg-[#0a2561] transition-colors rounded-xs shadow-xs flex items-center gap-2"
             >
               {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Save Store Settings

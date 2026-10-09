@@ -140,7 +140,9 @@ export function generateOrderCardJpg({
     ctx.textAlign = 'left';
     ctx.fillStyle = '#1c1a17';
     ctx.font = '500 12px "Montserrat", sans-serif';
-    ctx.fillText(item.name || item.productName || 'Jewelry Item', 60, y + 24);
+    const itemName = item.name || item.productName || 'Jewelry Item';
+    const variantSuffix = item.colorVariantName ? ` (${item.colorVariantName})` : '';
+    ctx.fillText(`${itemName}${variantSuffix}`, 60, y + 24);
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#6b665f';

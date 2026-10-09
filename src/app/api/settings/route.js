@@ -17,6 +17,8 @@ export async function GET() {
       insideDhakaDeliveryCharge: Number(settingsMap.insideDhakaDeliveryCharge || 80),
       outsideDhakaDeliveryCharge: Number(settingsMap.outsideDhakaDeliveryCharge || 120),
       smsAlertsEnabled: settingsMap.smsAlertsEnabled !== 'false',
+      noticeBannerText: settingsMap.noticeBannerText || 'Timeless Beauty Inspired by the Treasures of the Sea ✦ Insured Delivery across Bangladesh (Dhaka ৳80 | Nationwide ৳120)',
+      noticeBannerEnabled: settingsMap.noticeBannerEnabled !== 'false',
     });
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -24,6 +26,8 @@ export async function GET() {
       insideDhakaDeliveryCharge: 80,
       outsideDhakaDeliveryCharge: 120,
       smsAlertsEnabled: true,
+      noticeBannerText: 'Timeless Beauty Inspired by the Treasures of the Sea ✦ Insured Delivery across Bangladesh (Dhaka ৳80 | Nationwide ৳120)',
+      noticeBannerEnabled: true,
     });
   }
 }
@@ -36,7 +40,13 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { insideDhakaDeliveryCharge, outsideDhakaDeliveryCharge, smsAlertsEnabled } = body;
+    const {
+      insideDhakaDeliveryCharge,
+      outsideDhakaDeliveryCharge,
+      smsAlertsEnabled,
+      noticeBannerText,
+      noticeBannerEnabled,
+    } = body;
 
     const updates = [];
     if (insideDhakaDeliveryCharge !== undefined) {
@@ -65,6 +75,26 @@ export async function POST(request) {
           where: { key: 'smsAlertsEnabled' },
           update: { value: String(smsAlertsEnabled) },
           create: { key: 'smsAlertsEnabled', value: String(smsAlertsEnabled) },
+        })
+      );
+    }
+
+    if (noticeBannerText !== undefined) {
+      updates.push(
+        prisma.storeSetting.upsert({
+          where: { key: 'noticeBannerText' },
+          update: { value: String(noticeBannerText) },
+          create: { key: 'noticeBannerText', value: String(noticeBannerText) },
+        })
+      );
+    }
+
+    if (noticeBannerEnabled !== undefined) {
+      updates.push(
+        prisma.storeSetting.upsert({
+          where: { key: 'noticeBannerEnabled' },
+          update: { value: String(noticeBannerEnabled) },
+          create: { key: 'noticeBannerEnabled', value: String(noticeBannerEnabled) },
         })
       );
     }

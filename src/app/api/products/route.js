@@ -12,8 +12,8 @@ function generateSlug(name) {
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)+/g, '') +
-    '-' +
-    Math.random().toString(36).substring(2, 6)
+      '-' +
+      Math.random().toString(36).substring(2, 6)
   );
 }
 
@@ -33,6 +33,11 @@ export async function GET(request) {
 
     const products = await prisma.product.findMany({
       where: whereClause,
+      include: {
+        variants: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -51,39 +56,116 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { name, description, price, wholesaleCost, category, tags, quantity, images } = body;
+    const {
+      name,
+      description,
+      price,
+      wholesaleCost,
+      category,
+      tags,
+      quantity,
+      images,
+      commonImages,
+      variants = [],
+    } = body;
 
     if (!name || price === undefined) {
       return NextResponse.json({ error: 'Name and Price are required' }, { status: 400 });
     }
 
-    // Limit to max 3 images as requested
-    let imageArray = [];
-    if (Array.isArray(images)) {
-      imageArray = images.slice(0, 3);
-    } else if (typeof images === 'string') {
+    // Common images: max 2
+    let commonImageArray = [];
+    if (Array.isArray(commonImages)) {
+      commonImageArray = commonImages.slice(0, 2);
+    } else if (typeof commonImages === 'string') {
       try {
-        const parsed = JSON.parse(images);
-        imageArray = Array.isArray(parsed) ? parsed.slice(0, 3) : [images];
+        const parsed = JSON.parse(commonImages);
+        commonImageArray = Array.isArray(parsed) ? parsed.slice(0, 2) : [commonImages];
       } catch (e) {
-        imageArray = images.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 3);
+        commonImageArray = commonImages.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 2);
+      }
+    }
+
+    // Legacy/preview images
+    let imageArray = [];
+    if (Array.isArray(images) && images.length > 0) {
+      imageArray = images;
+    } else if (commonImageArray.length > 0) {
+      imageArray = commonImageArray;
+    } else if (variants.length > 0) {
+      // Pick first variant's first image if available
+      for (const v of variants) {
+        let vImgs = [];
+        try {
+          vImgs = Array.isArray(v.images) ? v.images : JSON.parse(v.images || '[]');
+        } catch (e) {
+          vImgs = [];
+        }
+        if (vImgs.length > 0) {
+          imageArray.push(vImgs[0]);
+          break;
+        }
+      }
+    }
+
+    // Calculate total quantity across color variants if provided, otherwise base quantity
+    let totalQty = Number(quantity) || 0;
+    if (Array.isArray(variants) && variants.length > 0) {
+      const sumVariantQty = variants.reduce((acc, v) => acc + (Number(v.quantity) || 0), 0);
+      if (sumVariantQty > 0 || totalQty === 0) {
+        totalQty = sumVariantQty;
       }
     }
 
     const slug = generateSlug(name);
 
-    const product = await prisma.product.create({
-      data: {
-        name: name.trim(),
-        slug,
-        description: description || '',
-        price: Number(price),
-        wholesaleCost: Number(wholesaleCost) || 0,
-        category: category || 'Rings',
-        tags: tags || '',
-        quantity: Math.max(0, Number(quantity) || 0),
-        images: JSON.stringify(imageArray),
-      },
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          name: name.trim(),
+          slug,
+          description: description || '',
+          price: Number(price),
+          wholesaleCost: Number(wholesaleCost) || 0,
+          category: category || 'Rings',
+          tags: tags || '',
+          quantity: Math.max(0, totalQty),
+          images: JSON.stringify(imageArray),
+          commonImages: JSON.stringify(commonImageArray),
+        },
+      });
+
+      if (Array.isArray(variants) && variants.length > 0) {
+        for (const v of variants) {
+          if (v.colorName && v.colorName.trim()) {
+            let vImages = [];
+            if (Array.isArray(v.images)) {
+              vImages = v.images;
+            } else if (typeof v.images === 'string') {
+              try {
+                vImages = JSON.parse(v.images);
+              } catch (e) {
+                vImages = [v.images];
+              }
+            }
+
+            await tx.productVariant.create({
+              data: {
+                productId: created.id,
+                colorName: v.colorName.trim(),
+                colorCode: v.colorCode || null,
+                quantity: Math.max(0, Number(v.quantity) || 0),
+                images: JSON.stringify(vImages),
+              },
+            });
+          }
+        }
+      }
+
+      return await tx.product.findUnique({
+        where: { id: created.id },
+        include: { variants: true },
+      });
     });
 
     return NextResponse.json({ success: true, product });

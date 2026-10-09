@@ -143,17 +143,30 @@ export default function CartDrawer() {
 
               return (
                 <div
-                  key={item.id}
+                  key={item.cartKey || item.id}
                   className="flex gap-3.5 pb-4 border-b border-[#edf4fc] last:border-b-0"
                 >
                   <img
-                    src={imgUrl}
+                    src={item.variantImage || imgUrl}
                     alt={item.name}
                     className="w-16 h-16 object-cover rounded-lg border border-[#e4edf8] bg-[#f4f8fd]"
                   />
                   <div className="flex-grow">
                     <h4 className="text-xs font-medium text-[#0d2342] line-clamp-1">{item.name}</h4>
-                    <span className="text-[11px] text-[#0f388a] font-semibold block mb-2">
+                    {item.colorVariantName && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {item.colorCode && (
+                          <span
+                            className="w-2 h-2 rounded-full border border-black/10 inline-block"
+                            style={{ backgroundColor: item.colorCode }}
+                          />
+                        )}
+                        <span className="text-[10px] text-[#5e7692] font-medium">
+                          Color: {item.colorVariantName}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-[11px] text-[#0f388a] font-semibold block mb-2 mt-1">
                       ৳{Number(item.price).toLocaleString()}
                     </span>
 
@@ -161,7 +174,7 @@ export default function CartDrawer() {
                       <div className="flex items-center border border-[#d2e2f6] rounded-md overflow-hidden">
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.cartKey || item.id, item.quantity - 1)}
                           className="px-2 py-0.5 text-xs text-gray-600 hover:bg-[#e8f2fc]"
                         >
                           -
@@ -171,7 +184,7 @@ export default function CartDrawer() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.cartKey || item.id, item.quantity + 1)}
                           className="px-2 py-0.5 text-xs text-gray-600 hover:bg-[#e8f2fc]"
                         >
                           +
@@ -179,7 +192,7 @@ export default function CartDrawer() {
                       </div>
 
                       <button
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={() => removeFromCart(item.cartKey || item.id)}
                         className="text-gray-400 hover:text-rose-600 transition-colors p-1"
                         aria-label="Remove item"
                       >

@@ -9,11 +9,44 @@ export default function ProductCard({ product }) {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [addedAnimation, setAddedAnimation] = useState(false);
 
-  // Parse images (up to 3)
+  // Parse variants if available
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const [selectedVariantId, setSelectedVariantId] = useState(
+    variants.length > 0 ? variants[0].id : null
+  );
+
+  const selectedVariant = variants.find((v) => v.id === selectedVariantId) || null;
+
+  // Compute active image gallery based on selected variant and common images
   let images = [];
   try {
-    const parsed = typeof product.images === 'string' ? JSON.parse(product.images) : product.images;
-    images = Array.isArray(parsed) && parsed.length > 0 ? parsed.slice(0, 3) : [];
+    let variantImages = [];
+    if (selectedVariant && selectedVariant.images) {
+      const parsedVar = typeof selectedVariant.images === 'string'
+        ? JSON.parse(selectedVariant.images)
+        : selectedVariant.images;
+      if (Array.isArray(parsedVar)) variantImages = parsedVar;
+    }
+
+    let commonImgs = [];
+    if (product.commonImages) {
+      const parsedCommon = typeof product.commonImages === 'string'
+        ? JSON.parse(product.commonImages)
+        : product.commonImages;
+      if (Array.isArray(parsedCommon)) commonImgs = parsedCommon;
+    }
+
+    if (variantImages.length > 0) {
+      images = [...variantImages, ...commonImgs];
+    } else {
+      const parsedLegacy = typeof product.images === 'string'
+        ? JSON.parse(product.images)
+        : product.images;
+      images = Array.isArray(parsedLegacy) && parsedLegacy.length > 0 ? parsedLegacy : [];
+      if (images.length === 0 && commonImgs.length > 0) {
+        images = commonImgs;
+      }
+    }
   } catch (e) {
     images = [];
   }
@@ -22,8 +55,15 @@ export default function ProductCard({ product }) {
     images = ['https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=80'];
   }
 
-  const isOutOfStock = product.quantity <= 0;
-  const isLowStock = product.quantity > 0 && product.quantity <= 5;
+  // Stock is based on selected variant if present, otherwise product.quantity
+  const currentStock = selectedVariant ? selectedVariant.quantity : product.quantity;
+  const isOutOfStock = currentStock <= 0;
+  const isLowStock = currentStock > 0 && currentStock <= 5;
+
+  const handleSelectVariant = (variant) => {
+    setSelectedVariantId(variant.id);
+    setCurrentImgIndex(0);
+  };
 
   const handleMouseEnter = () => {
     if (images.length > 1) {
@@ -37,14 +77,35 @@ export default function ProductCard({ product }) {
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
-    addToCart(product, 1);
+    addToCart(
+      product,
+      1,
+      selectedVariant
+        ? {
+            variantId: selectedVariant.id,
+            colorVariantName: selectedVariant.colorName,
+            colorCode: selectedVariant.colorCode,
+            variantImage: images[0],
+          }
+        : null
+    );
     setAddedAnimation(true);
     setTimeout(() => setAddedAnimation(false), 1500);
   };
 
   const handleBuyNow = () => {
     if (isOutOfStock) return;
-    buyNow(product);
+    buyNow(
+      product,
+      selectedVariant
+        ? {
+            variantId: selectedVariant.id,
+            colorVariantName: selectedVariant.colorName,
+            colorCode: selectedVariant.colorCode,
+            variantImage: images[0],
+          }
+        : null
+    );
   };
 
   return (
@@ -133,13 +194,54 @@ export default function ProductCard({ product }) {
           {product.description}
         </p>
 
+        {/* Color Variants Selector */}
+        {variants.length > 0 && (
+          <div className="mb-3 pt-1 border-t border-[#edf4fc]">
+            <div className="flex items-center justify-between text-[11px] mb-1.5">
+              <span className="text-[#5e7692] font-medium">Color:</span>
+              <span className="text-[#0d2342] font-semibold">
+                {selectedVariant ? selectedVariant.colorName : 'Select'}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {variants.map((v) => {
+                const isSelected = v.id === selectedVariantId;
+                const isVarOut = v.quantity <= 0;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => handleSelectVariant(v)}
+                    title={`${v.colorName} (${v.quantity} in stock)`}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${
+                      isSelected
+                        ? 'bg-[#0f388a] text-white ring-2 ring-[#0f388a]/30 shadow-xs'
+                        : isVarOut
+                        ? 'bg-gray-100 text-gray-400 line-through border border-gray-200'
+                        : 'bg-[#f0f6fd] text-[#0d2342] border border-[#d2e2f6] hover:border-[#0f388a]'
+                    }`}
+                  >
+                    {v.colorCode && (
+                      <span
+                        className="w-2.5 h-2.5 rounded-full border border-black/10 shrink-0"
+                        style={{ backgroundColor: v.colorCode }}
+                      />
+                    )}
+                    <span>{v.colorName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Pricing */}
         <div className="flex items-baseline justify-between pt-2 border-t border-[#edf4fc] mb-3">
           <span className="text-base font-semibold text-[#0d2342]">
             ৳{Number(product.price).toLocaleString()}
           </span>
           <span className="text-[11px] text-[#7a93b0]">
-            {product.quantity > 0 ? `${product.quantity} in stock` : 'Out of stock'}
+            {currentStock > 0 ? `${currentStock} in stock` : 'Out of stock'}
           </span>
         </div>
 

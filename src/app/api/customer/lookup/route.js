@@ -33,6 +33,9 @@ export async function GET(request) {
         district: true,
         upazila: true,
         fullAddress: true,
+        isBlacklisted: true,
+        isFraudRisk: true,
+        fraudNotes: true,
       },
     });
 

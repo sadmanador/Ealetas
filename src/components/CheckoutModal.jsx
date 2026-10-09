@@ -103,6 +103,10 @@ export default function CheckoutModal() {
         const data = await res.json();
 
         if (data.customer) {
+          if (data.customer.isBlacklisted) {
+            setErrorMessage('Your account / phone number is restricted from placing online orders. Please contact customer care.');
+            return;
+          }
           setName((prev) => (!prev ? data.customer.name : prev));
           if (data.customer.division) {
             setDivision(data.customer.division);
@@ -168,7 +172,12 @@ export default function CheckoutModal() {
         upazila,
         fullAddress: fullAddress.trim(),
         isDhakaCityCorp,
-        items: currentItemsSnapshot.map((i) => ({ productId: i.id, quantity: i.quantity })),
+        items: currentItemsSnapshot.map((i) => ({
+          productId: i.id,
+          productVariantId: i.variantId || null,
+          colorVariantName: i.colorVariantName || null,
+          quantity: i.quantity,
+        })),
         notes,
       };
 

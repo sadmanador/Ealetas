@@ -3,6 +3,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 import Link from 'next/link';
+import HomeFaqSection from '@/components/HomeFaqSection';
 import {
   Sparkles,
   Shield,
@@ -21,7 +22,15 @@ export const revalidate = 0; // Dynamic server component to always show live sto
 
 export default async function HomePage() {
   const products = await prisma.product.findMany({
+    include: {
+      variants: true,
+    },
     orderBy: { createdAt: 'desc' },
+  });
+
+  const faqs = await prisma.faqItem.findMany({
+    where: { isActive: true },
+    orderBy: { order: 'asc' },
   });
 
   // Six visual categories matching the theme design
@@ -532,6 +541,9 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* 8. FREQUENTLY ASKED QUESTIONS (Dynamic & Admin Managed) */}
+        <HomeFaqSection faqs={faqs} />
 
         {/* 9. STAY CONNECTED NEWSLETTER BANNER */}
         <section className="py-14 bg-gradient-to-r from-[#0f388a] via-[#12429f] to-[#0a2561] text-white">

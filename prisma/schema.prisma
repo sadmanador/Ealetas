@@ -19,79 +19,115 @@ model AdminUser {
 }
 
 model Product {
-  id            String      @id @default(cuid())
+  id            String           @id @default(cuid())
   name          String
-  slug          String      @unique
-  description   String      @db.Text
+  slug          String           @unique
+  description   String           @db.Text
   price         Float
-  wholesaleCost Float       @default(0)
+  wholesaleCost Float            @default(0)
   category      String
-  tags          String      @default("")
-  quantity      Int         @default(0)
-  images        String      @db.Text
-  isFeatured    Boolean     @default(false)
+  tags          String           @default("")
+  quantity      Int              @default(0) // total across variants or base
+  images        String           @db.Text    // legacy/main preview image JSON
+  commonImages  String           @default("[]") @db.Text // up to 2 common images
+  isFeatured    Boolean          @default(false)
+  variants      ProductVariant[]
   orderItems    OrderItem[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorName  String
+  colorCode  String?     // optional hex code (e.g. #0f388a)
+  quantity   Int         @default(0)
+  images     String      @default("[]") @db.Text // variant-specific images JSON
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 }
 
 model Customer {
-  id          String   @id @default(cuid())
-  phone       String   @unique
-  name        String
-  division    String
-  district    String
-  upazila     String
-  fullAddress String   @db.Text
-  orders      Order[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  phone         String   @unique
+  name          String
+  division      String
+  district      String
+  upazila       String
+  fullAddress   String   @db.Text
+  isBlacklisted Boolean  @default(false)
+  isFraudRisk   Boolean  @default(false)
+  fraudNotes    String?  @db.Text
+  orders        Order[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Order {
-  id                String      @id @default(cuid())
-  orderNumber       String      @unique
+  id                String               @id @default(cuid())
+  orderNumber       String               @unique
   customerId        String
-  customer          Customer    @relation(fields: [customerId], references: [id])
-  status            String      @default("pending") // pending, confirmed, packaged, in_transit, delivered, cancelled, returned
+  customer          Customer             @relation(fields: [customerId], references: [id])
+  status            String               @default("pending") // pending, confirmed, packaged, in_transit, delivered, cancelled, returned
   subtotal          Float
   deliveryCharge    Float
   totalAmount       Float
-  isDhakaCityCorp   Boolean     @default(false)
-  deliveryAddress   String      @db.Text
+  totalCost         Float                @default(0) // wholesale items + packaging costs
+  isDhakaCityCorp   Boolean              @default(false)
+  deliveryAddress   String               @db.Text
   customerPhone     String
   customerName      String
   notes             String?
-  inventoryAdjusted Boolean     @default(false)
+  inventoryAdjusted Boolean              @default(false)
   items             OrderItem[]
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  packagingItems    OrderPackagingItem[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 }
 
 model OrderItem {
-  id            String   @id @default(cuid())
-  orderId       String
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId     String?
-  product       Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  productName   String
-  productImage  String?
-  price         Float
-  wholesaleCost Float    @default(0)
-  quantity      Int      @default(1)
+  id               String          @id @default(cuid())
+  orderId          String
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String?
+  product          Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productVariantId String?
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+  productName      String
+  colorVariantName String?
+  productImage     String?
+  price            Float
+  wholesaleCost    Float           @default(0)
+  quantity         Int             @default(1)
+}
+
+model OrderPackagingItem {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  packagingItemId String
+  packagingItem   PackagingItem @relation(fields: [packagingItemId], references: [id], onDelete: Cascade)
+  quantity        Int           @default(1)
+  unitPrice       Float         @default(0)
+  totalCost       Float         @default(0)
+  createdAt       DateTime      @default(now())
 }
 
 model PackagingItem {
-  id          String           @id @default(cuid())
-  sku         String           @unique
-  name        String
-  dimensions  String?
-  description String?          @db.Text
-  unitPrice   Float            @default(0)
-  quantity    Int              @default(0)
-  batches     PackagingBatch[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id             String               @id @default(cuid())
+  sku            String               @unique
+  name           String
+  dimensions     String?
+  description    String?              @db.Text
+  unitPrice      Float                @default(0)
+  quantity       Int                  @default(0)
+  batches        PackagingBatch[]
+  orderPackagings OrderPackagingItem[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 }
 
 model PackagingBatch {
@@ -131,5 +167,24 @@ model StoreSetting {
   id        String   @id @default(cuid())
   key       String   @unique
   value     String
+  updatedAt DateTime @updatedAt
+}
+
+model CmsPage {
+  id        String   @id @default(cuid())
+  slug      String   @unique // 'words-from-founder', 'terms-and-conditions', 'return-policy'
+  title     String
+  content   String   @db.Text // HTML from TipTap
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model FaqItem {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String   @db.Text
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

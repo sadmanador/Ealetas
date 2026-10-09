@@ -34,6 +34,13 @@ export default function AdminOrdersPage() {
   const [updatingId, setUpdatingId] = useState(null);
   const [notice, setNotice] = useState('');
 
+  // Packaging Modal state
+  const [packagingModalOrder, setPackagingModalOrder] = useState(null);
+  const [packagingItemsList, setPackagingItemsList] = useState([]);
+  const [selectedPackaging, setSelectedPackaging] = useState([]); // [{ packagingItemId, quantity }]
+  const [itemAdjustments, setItemAdjustments] = useState([]); // [{ orderItemId, quantity }]
+  const [isSubmittingPackaging, setIsSubmittingPackaging] = useState(false);
+
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
@@ -47,15 +54,112 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const fetchPackagingInventory = async () => {
+    try {
+      const res = await fetch('/api/packaging');
+      const data = await res.json();
+      setPackagingItemsList(data.items || []);
+    } catch (e) {
+      console.error('Error fetching packaging items:', e);
+    }
+  };
+
   useEffect(() => {
     fetchOrders();
+    fetchPackagingInventory();
   }, []);
 
-  const handleStatusChange = async (orderId, newStatus) => {
-    setUpdatingId(orderId);
+  const openPackagingModal = (order) => {
+    setPackagingModalOrder(order);
+    // Initialize item adjustments with current quantities
+    setItemAdjustments(
+      order.items.map((i) => ({
+        orderItemId: i.id,
+        productName: i.productName,
+        colorVariantName: i.colorVariantName,
+        originalQty: i.quantity,
+        quantity: i.quantity,
+        wholesaleCost: i.wholesaleCost || 0,
+      }))
+    );
+    setSelectedPackaging([]);
+  };
+
+  const closePackagingModal = () => {
+    setPackagingModalOrder(null);
+    setSelectedPackaging([]);
+    setItemAdjustments([]);
+  };
+
+  const handleAddPackagingItemRow = (pkgId) => {
+    if (!pkgId) return;
+    if (selectedPackaging.some((p) => p.packagingItemId === pkgId)) return;
+    setSelectedPackaging((prev) => [...prev, { packagingItemId: pkgId, quantity: 1 }]);
+  };
+
+  const handleUpdatePackagingQty = (pkgId, qty) => {
+    const val = Math.max(1, Number(qty) || 1);
+    setSelectedPackaging((prev) =>
+      prev.map((p) => (p.packagingItemId === pkgId ? { ...p, quantity: val } : p))
+    );
+  };
+
+  const handleRemovePackagingRow = (pkgId) => {
+    setSelectedPackaging((prev) => prev.filter((p) => p.packagingItemId !== pkgId));
+  };
+
+  const handleUpdateItemAdjQty = (orderItemId, qty) => {
+    const val = Math.max(1, Number(qty) || 1);
+    setItemAdjustments((prev) =>
+      prev.map((item) => (item.orderItemId === orderItemId ? { ...item, quantity: val } : item))
+    );
+  };
+
+  const handleSubmitPackaging = async () => {
+    if (!packagingModalOrder) return;
+    setIsSubmittingPackaging(true);
+    try {
+      const res = await fetch(`/api/orders/${packagingModalOrder.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'packaged',
+          packagingItems: selectedPackaging,
+          itemAdjustments: itemAdjustments.map((a) => ({
+            orderItemId: a.orderItemId,
+            quantity: a.quantity,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update order packaging');
+      }
+
+      setNotice(`✓ Order #${data.order.orderNumber} successfully Packaged! Cost recorded & packaging inventory deducted.`);
+      setTimeout(() => setNotice(''), 4000);
+      closePackagingModal();
+      fetchOrders();
+      fetchPackagingInventory();
+    } catch (err) {
+      alert(err.message || 'Failed to submit packaging');
+    } finally {
+      setIsSubmittingPackaging(false);
+    }
+  };
+
+  const handleStatusChange = async (order, newStatus) => {
+    // If transitioning from confirmed to packaged, trigger modal!
+    if (order.status === 'confirmed' && newStatus === 'packaged') {
+      openPackagingModal(order);
+      return;
+    }
+
+    setUpdatingId(order.id);
     setNotice('');
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
+      const res = await fetch(`/api/orders/${order.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -78,6 +182,40 @@ export default function AdminOrdersPage() {
       alert(err.message || 'Status update failed');
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  // State machine transition helper
+  const getAllowedTransitions = (currentStatus) => {
+    switch (currentStatus) {
+      case 'pending':
+        return [
+          { status: 'confirmed', label: 'Confirm Order', color: 'bg-blue-600 hover:bg-blue-700 text-white' },
+          { status: 'cancelled', label: 'Cancel', color: 'bg-gray-200 hover:bg-gray-300 text-gray-700' },
+        ];
+      case 'confirmed':
+        return [
+          { status: 'packaged', label: 'Package & Box', color: 'bg-amber-600 hover:bg-amber-700 text-white' },
+          { status: 'cancelled', label: 'Cancel', color: 'bg-gray-200 hover:bg-gray-300 text-gray-700' },
+        ];
+      case 'packaged':
+        return [
+          { status: 'in_transit', label: 'Ship (In Transit)', color: 'bg-indigo-600 hover:bg-indigo-700 text-white' },
+          { status: 'cancelled', label: 'Cancel', color: 'bg-gray-200 hover:bg-gray-300 text-gray-700' },
+        ];
+      case 'in_transit':
+        return [
+          { status: 'delivered', label: 'Mark Delivered', color: 'bg-emerald-600 hover:bg-emerald-700 text-white' },
+          { status: 'returned', label: 'Mark Returned', color: 'bg-rose-600 hover:bg-rose-700 text-white' },
+        ];
+      case 'delivered':
+        return [
+          { status: 'returned', label: 'Return Parcel', color: 'bg-rose-600 hover:bg-rose-700 text-white' },
+        ];
+      case 'returned':
+      case 'cancelled':
+      default:
+        return []; // Locked!
     }
   };
 
@@ -303,25 +441,51 @@ export default function AdminOrdersPage() {
                         <div className="text-[10px] text-gray-400 font-normal">
                           (incl. ৳{order.deliveryCharge} delivery)
                         </div>
+                        {order.totalCost > 0 && (
+                          <div className="mt-1.5 pt-1 border-t border-[#f0ece5] text-[10px] text-[#0f388a] font-normal">
+                            Cost: <strong>৳{order.totalCost.toLocaleString()}</strong>
+                            {order.packagingItems && order.packagingItems.length > 0 && (
+                              <span className="block text-gray-500">
+                                ({order.packagingItems.length} packaging attached)
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       <td className="p-3.5">
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={order.status}
-                            disabled={updatingId === order.id}
-                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                            className="px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-xs border border-[#dcd5cb] bg-white focus:outline-none focus:border-[#b88b42]"
+                        <div className="space-y-1.5">
+                          <span
+                            className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-xs border ${
+                              STATUS_OPTIONS.find((s) => s.value === order.status)?.color || 'bg-gray-100 text-gray-700'
+                            }`}
                           >
-                            {STATUS_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                          {updatingId === order.id && (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#b88b42]" />
-                          )}
+                            {order.status.replace('_', ' ')}
+                          </span>
+
+                          {/* Strict Transition Action Buttons */}
+                          <div className="flex flex-col gap-1 pt-1">
+                            {getAllowedTransitions(order.status).length === 0 ? (
+                              <span className="text-[10px] text-gray-400 italic">Locked</span>
+                            ) : (
+                              getAllowedTransitions(order.status).map((t) => (
+                                <button
+                                  key={t.status}
+                                  type="button"
+                                  disabled={updatingId === order.id}
+                                  onClick={() => handleStatusChange(order, t.status)}
+                                  className={`px-2 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-xs transition-colors text-left flex items-center justify-between ${t.color}`}
+                                >
+                                  <span>{t.label}</span>
+                                  {updatingId === order.id ? (
+                                    <Loader2 className="w-2.5 h-2.5 animate-spin ml-1" />
+                                  ) : (
+                                    <ArrowRight className="w-2.5 h-2.5 ml-1" />
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -330,6 +494,222 @@ export default function AdminOrdersPage() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Packaging Modal for Confirmed -> Packaged Transition */}
+      {packagingModalOrder && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-white border border-[#eae5de] rounded-xs shadow-2xl overflow-hidden my-8 p-6 space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#eae5de]">
+              <div>
+                <span className="text-[10px] tracking-widest text-[#b88b42] uppercase font-semibold">
+                  Packaging & Fulfillment Check
+                </span>
+                <h3 className="font-serif text-xl font-medium text-[#1c1a17]">
+                  Order #{packagingModalOrder.orderNumber}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={closePackagingModal}
+                className="text-gray-400 hover:text-gray-700 text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Step 1: Adjust Product Quantities */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs uppercase tracking-wider font-semibold text-gray-900">
+                  1. Verify / Adjust Product Quantities in Package:
+                </label>
+                <span className="text-[11px] text-gray-500">
+                  Reduce quantity if customer changed order before packing
+                </span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {itemAdjustments.map((item) => (
+                  <div
+                    key={item.orderItemId}
+                    className="p-3 bg-[#faf8f5] border border-[#eae5de] rounded-xs flex items-center justify-between gap-4"
+                  >
+                    <div>
+                      <div className="font-medium text-xs text-gray-900">{item.productName}</div>
+                      {item.colorVariantName && (
+                        <div className="text-[10px] text-[#0f388a]">Color: {item.colorVariantName}</div>
+                      )}
+                      <div className="text-[10px] text-gray-500">
+                        Wholesale Cost: ৳{item.wholesaleCost} / unit
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-gray-500">Qty:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={item.originalQty}
+                        value={item.quantity}
+                        onChange={(e) => handleUpdateItemAdjQty(item.orderItemId, e.target.value)}
+                        className="w-16 px-2 py-1 bg-white border border-[#dcd5cb] text-xs font-semibold text-center rounded-xs focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 2: Tag Packaging Items */}
+            <div className="space-y-3 pt-2 border-t border-[#eae5de]">
+              <div className="flex items-center justify-between">
+                <label className="text-xs uppercase tracking-wider font-semibold text-gray-900">
+                  2. Add Packaging Items (Boxes, Pouches, Ribbons):
+                </label>
+                <span className="text-[11px] text-gray-500">
+                  Multiple items can be tagged to single order
+                </span>
+              </div>
+
+              {/* Add Packaging Item Dropdown */}
+              <div className="flex items-center gap-2">
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    handleAddPackagingItemRow(e.target.value);
+                    e.target.value = '';
+                  }}
+                  className="w-full px-3 py-2 bg-[#faf8f5] border border-[#dcd5cb] text-xs rounded-xs focus:outline-none"
+                >
+                  <option value="" disabled>
+                    + Select packaging item to add...
+                  </option>
+                  {packagingItemsList.map((pkg) => (
+                    <option key={pkg.id} value={pkg.id}>
+                      {pkg.sku} - {pkg.name} ({pkg.quantity} in stock, ৳{pkg.unitPrice}/unit)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Tagged Packaging List */}
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {selectedPackaging.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic py-2">
+                    No packaging item tagged yet. Select an item from above to include it in the package cost.
+                  </p>
+                ) : (
+                  selectedPackaging.map((row) => {
+                    const itemData = packagingItemsList.find((p) => p.id === row.packagingItemId);
+                    if (!itemData) return null;
+                    return (
+                      <div
+                        key={row.packagingItemId}
+                        className="p-2.5 bg-white border border-[#eae5de] rounded-xs flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div>
+                          <div className="font-semibold text-gray-900">
+                            {itemData.name} ({itemData.sku})
+                          </div>
+                          <div className="text-[10px] text-gray-500">
+                            Unit Cost: ৳{itemData.unitPrice} | Stock Available: {itemData.quantity}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-gray-500">Qty:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={row.quantity}
+                              onChange={(e) =>
+                                handleUpdatePackagingQty(row.packagingItemId, e.target.value)
+                              }
+                              className="w-14 px-2 py-1 bg-[#faf8f5] border border-[#dcd5cb] text-xs font-semibold text-center rounded-xs focus:outline-none"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePackagingRow(row.packagingItemId)}
+                            className="text-rose-600 hover:text-rose-800 text-xs px-1"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Cost Summary Preview */}
+            <div className="p-3.5 bg-[#faf8f5] border border-[#eae5de] rounded-xs text-xs space-y-1">
+              <div className="flex justify-between text-gray-600">
+                <span>Products Wholesale Cost:</span>
+                <span>
+                  ৳
+                  {itemAdjustments
+                    .reduce((sum, i) => sum + (i.wholesaleCost || 0) * i.quantity, 0)
+                    .toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Packaging Materials Cost:</span>
+                <span>
+                  ৳
+                  {selectedPackaging
+                    .reduce((sum, row) => {
+                      const item = packagingItemsList.find((p) => p.id === row.packagingItemId);
+                      return sum + (item ? item.unitPrice * row.quantity : 0);
+                    }, 0)
+                    .toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between font-semibold text-gray-900 pt-1 border-t border-[#eae5de]">
+                <span>Total Calculated Order Cost:</span>
+                <span className="text-[#0f388a]">
+                  ৳
+                  {(
+                    itemAdjustments.reduce((sum, i) => sum + (i.wholesaleCost || 0) * i.quantity, 0) +
+                    selectedPackaging.reduce((sum, row) => {
+                      const item = packagingItemsList.find((p) => p.id === row.packagingItemId);
+                      return sum + (item ? item.unitPrice * row.quantity : 0);
+                    }, 0)
+                  ).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={closePackagingModal}
+                disabled={isSubmittingPackaging}
+                className="px-4 py-2 border border-[#dcd5cb] text-xs font-medium text-gray-700 hover:bg-[#faf8f5] rounded-xs transition-colors"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSubmitPackaging}
+                disabled={isSubmittingPackaging}
+                className="px-5 py-2 bg-[#b88b42] text-white text-xs uppercase tracking-wider font-semibold hover:bg-[#9a7332] rounded-xs transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isSubmittingPackaging ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Packaging...
+                  </>
+                ) : (
+                  'Complete & Pack Order'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -35,3 +35,87 @@ h1, h2, h3, .font-serif {
     width: 0%;
   }
 }
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* TipTap Prose Styling */
+.tiptap-content h1 {
+  font-family: var(--font-serif);
+  font-size: 2.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  color: #0d2342;
+}
+
+.tiptap-content h2 {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: #0d2342;
+}
+
+.tiptap-content h3 {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 500;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #0f388a;
+}
+
+.tiptap-content p {
+  margin-bottom: 1rem;
+  line-height: 1.8;
+  color: #3b506b;
+}
+
+.tiptap-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1.5rem auto;
+  box-shadow: 0 4px 20px -2px rgba(15, 56, 138, 0.1);
+  border: 1px solid #e4edf8;
+}
+
+.tiptap-content blockquote {
+  border-left: 4px solid #0f388a;
+  padding-left: 1.25rem;
+  font-style: italic;
+  color: #0f388a;
+  margin: 1.5rem 0;
+}
+
+.tiptap-content ul {
+  list-style-type: disc;
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+  color: #3b506b;
+}
+
+.tiptap-content ol {
+  list-style-type: decimal;
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+  color: #3b506b;
+}
