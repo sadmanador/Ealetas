@@ -279,20 +279,24 @@ export default function AdminProcurementPage() {
     });
   };
 
-  // Open Enlist Modal
-  const openEnlistModal = (item) => {
-    setEnlistingItem(item);
-    setEnlistName(item.name || '');
-    setEnlistCategory(item.category || 'Rings');
-    setEnlistRetailPrice(String(item.unitPrice ? item.unitPrice * 2 : 1200));
-    setEnlistWholesaleCost(String(item.unitPrice || 0));
-    setEnlistQuantity(String(item.quantity || 10));
-    setEnlistDescription(`Fine handcrafted ${(item.category || 'jewelry').toLowerCase()} sourced with genuine quality materials.`);
+  // Open Enlist Modal (supports both direct enlistment and from sourced procurement item)
+  const openEnlistModal = (item = null) => {
+    setEnlistingItem(item || { isDirect: true, name: '', category: 'Rings', unitPrice: 0, quantity: 10 });
+    setEnlistName(item?.name || '');
+    setEnlistCategory(item?.category || 'Rings');
+    setEnlistRetailPrice(String(item?.unitPrice ? item.unitPrice * 2 : ''));
+    setEnlistWholesaleCost(String(item?.unitPrice || ''));
+    setEnlistQuantity(String(item?.quantity || '10'));
+    setEnlistDescription(
+      item?.category
+        ? `Fine handcrafted ${item.category.toLowerCase()} sourced with genuine quality materials.`
+        : 'Fine handcrafted jewelry sourced with genuine quality materials.'
+    );
     setEnlistTags('Procured,New Arrival,Handcrafted');
     setEnlistCommonImages([]);
 
-    // Initialize with item's color if present, else empty or 1 variant
-    if (item.colorName) {
+    // Initialize with item's color if present, else default empty variant
+    if (item?.colorName) {
       setEnlistVariants([
         {
           id: Math.random().toString(36).substring(2, 9),
@@ -317,7 +321,7 @@ export default function AdminProcurementPage() {
 
     if (enlistType === 'new') {
       if (!enlistName.trim() || enlistRetailPrice === '') {
-        setEnlistFormError('Product Name and Selling Price are required.');
+        setEnlistFormError('Product Name and Retail Selling Price are required.');
         return;
       }
     }
@@ -325,32 +329,64 @@ export default function AdminProcurementPage() {
     setIsSubmittingEnlist(true);
 
     try {
-      const payload = {
-        procurementItemId: enlistingItem.id,
-        existingProductId: enlistType === 'restock' ? enlistSelectedProductId : null,
-        name: enlistName.trim(),
-        category: enlistCategory,
-        retailPrice: Number(enlistRetailPrice),
-        wholesaleCost: Number(enlistWholesaleCost) || enlistingItem.unitPrice,
-        quantity: Number(enlistQuantity) || enlistingItem.quantity,
-        description: enlistDescription,
-        tags: enlistTags,
-        commonImages: enlistCommonImages,
-        variants: enlistVariants,
-      };
+      const isDirect = !enlistingItem.id;
 
-      const res = await fetch('/api/procurement/enlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      if (isDirect) {
+        // Direct enlistment via POST /api/products
+        const payload = {
+          name: enlistName.trim(),
+          category: enlistCategory,
+          price: Number(enlistRetailPrice),
+          wholesaleCost: Number(enlistWholesaleCost) || 0,
+          quantity: Number(enlistQuantity) || 0,
+          description: enlistDescription,
+          tags: enlistTags,
+          commonImages: enlistCommonImages,
+          variants: enlistVariants,
+        };
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to enlist product');
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to enlist product');
+        }
+
+        setSuccessMsg(`✓ Successfully enlisted "${data.product?.name || enlistName}" to catalog!`);
+      } else {
+        // Enlistment linked to a procurement item batch
+        const payload = {
+          procurementItemId: enlistingItem.id,
+          existingProductId: enlistType === 'restock' ? enlistSelectedProductId : null,
+          name: enlistName.trim(),
+          category: enlistCategory,
+          retailPrice: Number(enlistRetailPrice),
+          wholesaleCost: Number(enlistWholesaleCost) || enlistingItem.unitPrice,
+          quantity: Number(enlistQuantity) || enlistingItem.quantity,
+          description: enlistDescription,
+          tags: enlistTags,
+          commonImages: enlistCommonImages,
+          variants: enlistVariants,
+        };
+
+        const res = await fetch('/api/procurement/enlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to enlist product');
+        }
+
+        setSuccessMsg(`✓ ${data.message}`);
       }
 
-      setSuccessMsg(`✓ ${data.message}`);
       setTimeout(() => setSuccessMsg(''), 5000);
       setEnlistingItem(null);
       fetchLogs();
@@ -375,32 +411,42 @@ export default function AdminProcurementPage() {
           </h1>
         </div>
 
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className="p-2.5 bg-white border border-[#eae5de] rounded-xs shadow-xs text-xs">
-            <span className="text-gray-500 uppercase tracking-wider block text-[9px]">
-              Wholesale Sourced
-            </span>
-            <span className="text-base font-serif font-bold text-[#0f388a]">
-              ৳{totalWholesaleSourced?.toLocaleString()}
-            </span>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <button
+            type="button"
+            onClick={() => openEnlistModal(null)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f388a] text-white text-xs uppercase tracking-widest font-semibold hover:bg-[#0a2561] transition-colors rounded-lg shadow-md cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Enlist New Product
+          </button>
 
-          <div className="p-2.5 bg-white border border-[#eae5de] rounded-xs shadow-xs text-xs">
-            <span className="text-gray-500 uppercase tracking-wider block text-[9px]">
-              Travel & Food Costs
-            </span>
-            <span className="text-base font-serif font-bold text-gray-800">
-              ৳{totalTravelCosts?.toLocaleString()}
-            </span>
-          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="p-2.5 bg-white border border-[#eae5de] rounded-xs shadow-xs text-xs">
+              <span className="text-gray-500 uppercase tracking-wider block text-[9px]">
+                Wholesale Sourced
+              </span>
+              <span className="text-base font-serif font-bold text-[#0f388a]">
+                ৳{totalWholesaleSourced?.toLocaleString()}
+              </span>
+            </div>
 
-          <div className="p-2.5 bg-white border border-[#b88b42]/30 bg-[#faf8f5] rounded-xs shadow-xs text-xs">
-            <span className="text-gray-500 uppercase tracking-wider block text-[9px]">
-              Total Procurement Outlay
-            </span>
-            <span className="text-base font-serif font-bold text-[#b88b42]">
-              ৳{totalExpenditure?.toLocaleString()}
-            </span>
+            <div className="p-2.5 bg-white border border-[#eae5de] rounded-xs shadow-xs text-xs">
+              <span className="text-gray-500 uppercase tracking-wider block text-[9px]">
+                Travel & Food Costs
+              </span>
+              <span className="text-base font-serif font-bold text-gray-800">
+                ৳{totalTravelCosts?.toLocaleString()}
+              </span>
+            </div>
+
+            <div className="p-2.5 bg-white border border-[#b88b42]/30 bg-[#faf8f5] rounded-xs shadow-xs text-xs">
+              <span className="text-gray-500 uppercase tracking-wider block text-[9px]">
+                Total Procurement Outlay
+              </span>
+              <span className="text-base font-serif font-bold text-[#b88b42]">
+                ৳{totalExpenditure?.toLocaleString()}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -785,10 +831,12 @@ export default function AdminProcurementPage() {
             <div className="flex items-center justify-between p-5 border-b border-[#e2edf8] bg-[#f8fbfe]">
               <div>
                 <span className="text-[10px] tracking-widest text-[#0f388a] uppercase font-semibold">
-                  Catalog Hand-Off & Enlistment
+                  {enlistingItem.id ? 'Catalog Hand-Off & Enlistment' : 'Direct Product Enlistment'}
                 </span>
                 <h3 className="font-serif text-lg font-semibold text-[#0d2342]">
-                  Enlist "{enlistingItem.name}" to Active Catalog
+                  {enlistingItem.id
+                    ? `Enlist "${enlistingItem.name}" to Active Catalog`
+                    : 'Enlist New Jewelry Piece to Catalog'}
                 </h3>
               </div>
               <button
@@ -800,21 +848,23 @@ export default function AdminProcurementPage() {
               </button>
             </div>
 
-            {/* Sourced Info Preview Bar */}
-            <div className="px-6 py-3 bg-[#faf8f5] border-b border-[#eae5de] grid grid-cols-3 gap-3 text-xs">
-              <div>
-                <span className="text-gray-500 block text-[10px] uppercase font-semibold">Wholesale Unit Cost</span>
-                <span className="font-semibold text-[#0f388a]">৳{enlistingItem.unitPrice} / unit</span>
+            {/* Sourced Info Preview Bar (if linked to a procured batch) */}
+            {enlistingItem.id && (
+              <div className="px-6 py-3 bg-[#faf8f5] border-b border-[#eae5de] grid grid-cols-3 gap-3 text-xs">
+                <div>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Wholesale Unit Cost</span>
+                  <span className="font-semibold text-[#0f388a]">৳{enlistingItem.unitPrice} / unit</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Procured Batch Stock</span>
+                  <span className="font-semibold text-gray-900">{enlistingItem.quantity} units</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Procurement Color</span>
+                  <span className="font-semibold text-gray-900">{enlistingItem.colorName || 'Default'}</span>
+                </div>
               </div>
-              <div>
-                <span className="text-gray-500 block text-[10px] uppercase font-semibold">Procured Batch Stock</span>
-                <span className="font-semibold text-gray-900">{enlistingItem.quantity} units</span>
-              </div>
-              <div>
-                <span className="text-gray-500 block text-[10px] uppercase font-semibold">Procurement Color</span>
-                <span className="font-semibold text-gray-900">{enlistingItem.colorName || 'Default'}</span>
-              </div>
-            </div>
+            )}
 
             <form
               onSubmit={(e) => {
