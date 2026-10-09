@@ -30,24 +30,26 @@ model Product {
   quantity      Int              @default(0) // total across variants or base
   images        String           @db.Text    // legacy/main preview image JSON
   commonImages  String           @default("[]") @db.Text // up to 2 common images
-  isFeatured    Boolean          @default(false)
-  variants      ProductVariant[]
-  orderItems    OrderItem[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  isFeatured       Boolean           @default(false)
+  variants         ProductVariant[]
+  orderItems       OrderItem[]
+  procurementItems ProcurementItem[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model ProductVariant {
-  id         String      @id @default(cuid())
-  productId  String
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  colorName  String
-  colorCode  String?     // optional hex code (e.g. #0f388a)
-  quantity   Int         @default(0)
-  images     String      @default("[]") @db.Text // variant-specific images JSON
-  orderItems OrderItem[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id               String            @id @default(cuid())
+  productId        String
+  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorName        String
+  colorCode        String?           // optional hex code (e.g. #0f388a)
+  quantity         Int               @default(0)
+  images           String            @default("[]") @db.Text // variant-specific images JSON
+  orderItems       OrderItem[]
+  procurementItems ProcurementItem[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model Customer {
@@ -144,16 +146,39 @@ model PackagingBatch {
 }
 
 model ProcurementLog {
-  id                   String   @id @default(cuid())
-  date                 DateTime @default(now())
-  transportCost        Float    @default(0)
-  foodCost             Float    @default(0)
-  wholesaleProductCost Float    @default(0)
-  otherCost            Float    @default(0)
-  totalCost            Float    @default(0)
-  notes                String?  @db.Text
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                   String            @id @default(cuid())
+  title                String?           // e.g., 'Tanti Bazar Jewelry Run - Oct 2026'
+  date                 DateTime          @default(now())
+  transportCost        Float             @default(0)
+  foodCost             Float             @default(0)
+  wholesaleProductCost Float             @default(0) // auto-calculated sum of all items in this run
+  otherCost            Float             @default(0)
+  totalCost            Float             @default(0) // transport + food + other + wholesaleProductCost
+  supplier             String?           // supplier or market name
+  notes                String?           @db.Text
+  items                ProcurementItem[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+model ProcurementItem {
+  id               String          @id @default(cuid())
+  procurementLogId String
+  procurementLog   ProcurementLog  @relation(fields: [procurementLogId], references: [id], onDelete: Cascade)
+  productId        String?
+  product          Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productVariantId String?
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+  name             String
+  category         String          @default("Jewelry")
+  colorName        String?
+  colorCode        String?
+  quantity         Int             @default(1)
+  unitPrice        Float           @default(0) // Wholesale purchase price per unit
+  totalCost        Float           @default(0) // quantity * unitPrice
+  isEnlisted       Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 }
 
 model PageView {
